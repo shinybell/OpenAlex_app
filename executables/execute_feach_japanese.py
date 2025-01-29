@@ -24,9 +24,12 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
         sheet_manager = SpreadsheetManager(file_name, output_sheet_name)
         sheet_manager.clear_rows_from_second()
 
-        person_num = 4
+        
         count_cores = count_logical_cores()
-        max_works = count_cores*5
+        if use_API_key:
+            max_works = count_cores*20
+        else:
+            max_works = count_cores*10
         
         await append_log_async(f"論理コア数:{count_cores},max_works:{max_works},論文の検索を始めます。")  # ログの追加
         
@@ -35,6 +38,7 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
         creater.extract_authors(only_japanese=True)
         await append_log_async(f"論文数:{len(creater.all_results)},日本人著者数:{len(creater.authors_id_list)}")  #ログの追加
         
+        person_num = 8 if use_API_key else 4
         max_workers=max_works//person_num
         
         def process_author(author_id): 

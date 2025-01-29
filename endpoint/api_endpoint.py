@@ -277,13 +277,18 @@ if __name__ == "__main__":
         "topic_id": [],
         "primary": False,
         "citation_count": 50,
-        "publication_year": 2022,
+        "publication_year": 2021,
         "title_and_abstract_search": "AI",
         "di_calculation": False,
         "output_sheet_name": "テスト1",
-        "use_API_key":False
-    }#0時間0分23秒
-
+        "use_API_key":True
+    }
+    #use_API_keyがFalseの場合
+    #0時間0分44秒
+    #use_API_keyがTrueの場合(max_works = count_cores*10)
+    #0時間0分25秒
+    
+    
     async def main():
         # 非同期関数を直接実行
         #process_count_japanese

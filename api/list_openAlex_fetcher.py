@@ -28,7 +28,9 @@ class OpenAlexPagenationDataFetcher:
             # APIキーをクエリパラメータに追加
             self.params["api_key"] = self.api_key  # クエリパラメータとして追加
             self.params["mailto"] = "t.ichikawa.bnv@gmail.com"
-            #print("paramの中身",self.params)
+            print("APIキーを使っています。")
+        else:
+            print("APIキーを使っていません。")
             
         self.meta, self.all_results = self.meta_data_getter()
             
@@ -221,12 +223,12 @@ if __name__ == "__main__":
     #     "per_page":200
     # }
     params={
-       "filter": "primary_topic.id:T10966,cited_by_count:>50",
+       "filter": "type:article,publication_year:>2014,cited_by_count:>199,authorships.institutions.country_code:JP",
        "page": 1,
        "per_page": 200,
     }
     
-    fetcher = OpenAlexPagenationDataFetcher(endpoint_url, params,id="aaaaaa",max_works=100,only_japanese=False,use_API_key=True)
+    fetcher = OpenAlexPagenationDataFetcher(endpoint_url, params,id="aaaaaa",max_works=100,only_japanese=False,use_API_key=False)
     print(fetcher.meta)
     
     end_time = time.time()  # 実行終了時間を記録
