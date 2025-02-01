@@ -44,7 +44,7 @@ class GatherAuthorData:
             
     def di_calculation(self):
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_article = {executor.submit(Calculater.calculate_disruption_index_for_article, article,self.found_date): article 
+            future_to_article = {executor.submit(Calculater.calculate_disruption_index_for_article, article,self.found_date,use_API_key=self.use_API_key): article 
             for article in self.article_dict_list
             }
             for future in as_completed(future_to_article):

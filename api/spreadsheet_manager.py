@@ -177,5 +177,6 @@ class SpreadsheetManager:
 if __name__ == "__main__":
  
 # # 使用例
-    spreadsheet_manager = SpreadsheetManager("OpenAlex_App_Core8_テスト用（使えません）", "API動作確認")
-    spreadsheet_manager.append_row(["時間","テスト","テスト2","3","4","5",""])
+    spreadsheet_manager = SpreadsheetManager("分析用（起業家/sample比較）0125", "サンプル2015")
+    rows = spreadsheet_manager.get_rows_by_columns(["研究者ID"])
+    print(rows)

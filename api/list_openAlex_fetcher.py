@@ -223,12 +223,12 @@ if __name__ == "__main__":
     #     "per_page":200
     # }
     params={
-       "filter": "type:article,publication_year:>2014,cited_by_count:>199,authorships.institutions.country_code:JP",
+       "filter": "type:article,publication_year:>2020,cited_by_count:>50,authorships.institutions.country_code:JP",
        "page": 1,
        "per_page": 200,
     }
     
-    fetcher = OpenAlexPagenationDataFetcher(endpoint_url, params,id="aaaaaa",max_works=100,only_japanese=False,use_API_key=False)
+    fetcher = OpenAlexPagenationDataFetcher(endpoint_url, params,id="aaaaaa",max_works=100,only_japanese=False,use_API_key=True)
     print(fetcher.meta)
     
     end_time = time.time()  # 実行終了時間を記録

@@ -276,18 +276,16 @@ if __name__ == "__main__":
         #"author_info_source": "work",
         "topic_id": [],
         "primary": False,
-        "citation_count": 50,
-        "publication_year": 2021,
+        "citation_count": 25,
+        "publication_year": 2022,
         "title_and_abstract_search": "AI",
-        "di_calculation": False,
+        "di_calculation": True,
         "output_sheet_name": "テスト1",
         "use_API_key":True
     }
-    #use_API_keyがFalseの場合
-    #0時間0分44秒
-    #use_API_keyがTrueの場合(max_works = count_cores*10)
-    #0時間0分25秒
-    
+    #日本人118人
+    #GIL→True 0時間5分10秒
+    #GIL→False now
     
     async def main():
         # 非同期関数を直接実行
