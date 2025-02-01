@@ -54,12 +54,12 @@ def dict_list_to_string_rows(dict_list):
 def adjust_indicators(dict_list,add_key_list=[]):
     # 新しい辞書リストを格納するリスト
     new_list = []
-    header = ["研究者ID", "名前", "最新の所属", "キャリア年数", "出版数", "全ての出版の被引用数", "H-Index", "過去5年H-index", "企業との共著数", "first論文数", "対応(last)論文数", "DI0.8以上のworks数", "世界ランキング","総数","STP.論文ID", "STP.論文タイトル", "STP.論文出版年月", "STP.論文被引用数","CTP.論文ID", "CTP.論文タイトル", "CTP.論文出版年月", "CTP.論文被引用数"]
-        
+    header = ["研究者ID", "名前", "最新の所属", "キャリア年数", "出版数", "全ての出版の被引用数","h-indexランキング","研究者検索結果総数","H-Index", "過去5年H-index", "企業との共著数", "first論文数", "対応(last)論文数", "DI0.8以上のworks数", "引用数ランキング","論文検索結果総数","STP.論文ID", "STP.論文タイトル", "STP.論文出版年月", "STP.論文被引用数","CTP.論文ID", "CTP.論文タイトル", "CTP.論文出版年月", "CTP.論文被引用数"]
+   
     # 必要なキー
     need_keys = [
         "researcher_id", "name", "latest_affiliation",
-        "career_years", "works_count", "total_works_citations",
+        "career_years", "works_count", "total_works_citations","h_index_ranking","all_author_count",
         "h_index", "last_5_year_h_index", "coauthor_from_company_count", "first_paper_count",
         "corresponding_paper_count", "disruption_index_above_08",
         "世界ランキング","総数","条件論文1:ID","条件論文1:タイトル","条件論文1:出版年月","条件論文1:被引用数",

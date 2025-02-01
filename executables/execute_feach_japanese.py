@@ -29,12 +29,14 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
         else:
             max_works = count_cores*10
         
-        await append_log_async(f"論理コア数:{count_cores},max_works:{max_works},論文の検索を始めます。")  # ログの追加
-        
         creater = CreateAuthorIdList(topic_ids=topic_ids,primary=primary,threshold=threshold,year_threshold=year_threshold,title_and_abstract_search=title_and_abstract_search,max_works=max_works,use_API_key=use_API_key)
+        await append_log_async(f"論文の検索")  # ログの追加
         creater.run_get_works()
+        creater.extract_authors()
+        await append_log_async(f"論文数:{len(creater.all_results)},研究者数:{len(creater.authors_id_list)}")  # ログの追加
+        global_hindex_ranking_list = await creater.create_hindex_ranking()
         creater.extract_authors(only_japanese=True)
-        await append_log_async(f"論文数:{len(creater.all_results)},日本人著者数:{len(creater.authors_id_list)}")  #ログの追加
+        await append_log_async(f"日本人著者数:{len(creater.authors_id_list)}")  #ログの追加
         
         person_num = 8 if use_API_key else 4
         max_workers=max_works//person_num
@@ -54,7 +56,13 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                 if di_calculation:
                     author.di_calculation()
                 
-                profile_dict = author.gathering_author_data()
+                profile = author.gathering_author_data()
+                profile.h_index_ranking = next(
+                    (entry["h_index_ranking"] for entry in global_hindex_ranking_list if entry["author_id"] == author_id),
+                    -200
+                )
+                profile.all_author_count = len(global_hindex_ranking_list)
+                profile_dict = profile.to_dict()
                 works_data_dict = author.get_top_three_article()
                 top_searched_article = creater.get_top_article(author_id)
                 profile_dict.update(top_searched_article)

@@ -7,24 +7,35 @@ from utils.common_method import get_type_counts,extract_id_from_url
 import requests
 from collections import Counter
 
+
+
 class FetchAuthorEntity:
-    def __init__(self,author_id):
+    def __init__(self,author_id,use_API_key=False):
+        self.use_API_key = use_API_key
         self.author_id = extract_id_from_url(author_id)
-        self.data = self.fetch_author_json(author_id)
+        self.author_id=self.author_id.upper()
+        self.data = self.fetch_author_json(self.author_id) 
+        print(f"{self.author_id}の取得")
         
     def fetch_author_json(self,author_id):
-        url = f"https://api.openalex.org/authors/{author_id}"
+        if  self.use_API_key:
+            API_KEY = os.getenv('API_KEY') 
+            if not API_KEY:
+                raise ValueError("API_KEYが環境変数に設定されていません。")
+            url = f"https://api.openalex.org/authors/{author_id}?api_key={API_KEY}&mailto=t.ichikawa.bnv@gmail.com"
+        else:
+            url = f"https://api.openalex.org/authors/{author_id}"
         retrial_num=1 #全てのリトライをカウント
         server_retrial=1 #予期せぬエラーのみカウント
         while True:
             try:
-                response = requests.get(url,timeout=5)
+                response = requests.get(url,timeout=7)
                 if response.status_code == 200:
                     # 全著者情報をJSON形式で取得
                     data = response.json()
                     return data
                 else:
-                    if retrial_num>8:
+                    if retrial_num>20:
                         print(author_id,"の情報をauthorエンティティから収集できませんでした。")
                         return {}
                     print(author_id,"リクエストやり直し。retrial_num:",retrial_num)
@@ -141,8 +152,6 @@ class FetchAuthorEntity:
         max_year = max(all_years)
         return max_year - min_year + 1  # 1年分加算して年数に変換
 
-    # ゲッターメソッドの実装
-
     def get_author_id(self):
         researcher_info = self.extract_researcher_info()
         return researcher_info.get("id", "N/A")
@@ -227,30 +236,10 @@ class FetchAuthorEntity:
 if __name__ == "__main__":
     # 使用例
     start_time = time.time()  # 実行開始時刻を記録
-    
     author_id = "https://openalex.org/A5038138665"
-    author_entity = FetchAuthorEntity(author_id)
-    
-    #print(author_entity.calculate_type_counts())
-    # print("Author ID:", author_entity.get_author_id())
-    # print("Display Name:", author_entity.get_display_name())
-    # print("Alternative Names:", author_entity.get_alternative_names())
-    # print("ORCID:", author_entity.get_orcid())
-    # print("Works Count:", author_entity.get_works_count())
-    # print("Cited By Count:", author_entity.get_cited_by_count())
-    # print("2yr Mean Citedness:", author_entity.get_two_year_mean_citedness())
+    author_entity = FetchAuthorEntity(author_id,use_API_key=False)
     print("H-Index:", author_entity.get_h_index())
-    # print("I10-Index:", author_entity.get_i10_index())
-    #print("Affiliations:", len(author_entity.get_affiliations()))
-    # print("Last Institution Names:", author_entity.get_last_institution_names())
-    # print("Country Codes:", author_entity.get_country_codes())
-    # print("Type Counts:", author_entity.get_type_counts())
-    print("Country Counts:", author_entity.get_country_counts())
-    # print("Growth Rates:", author_entity.get_growth_rates())
-    #print("Career Years:", author_entity.get_career_years())
-    # print("Topics:", author_entity.get_topics())
-    # print("Counts by Year:", author_entity.get_counts_by_year())
-    
+
     end_time = time.time()  # 実行終了時刻を記録
     elapsed_time = end_time - start_time  # 経過時間を計算
     #print(f"プログラムの実行時間: {elapsed_time:.2f} 秒")

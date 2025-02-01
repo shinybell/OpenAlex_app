@@ -31,6 +31,10 @@ class AuthorProfileData:
     works_count: int = 0  # 発表した研究成果（Works）の総数
     # 全てのWorksの被引用数
     total_works_citations: int = 0  # 全Worksの被引用数の合計
+    #H-Index-global-ranking
+    h_index_ranking: int =0
+    #（ランキングの）研究者数の総数
+    all_author_count:int=0
     # H-Index
     h_index: int = 0 # H-Index（被引用数と論文数のバランスを示す指標）
     #過去５年のH-Index

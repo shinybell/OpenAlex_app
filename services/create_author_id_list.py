@@ -7,8 +7,11 @@ from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from utils.fetch_result_parser import OpenAlexResultParser, author_dict_list_to_author_work_data_list, author_dict_to_author_work_data
 from api.list_openAlex_fetcher import OpenAlexPagenationDataFetcher
+from services.fetch_auhtor_entity import FetchAuthorEntity
 from utils.format_change import title_and_abstract_search_format
 from utils.outputer import sort_dict_list_by_key
+from utils.async_log_to_sheet import append_log_async
+import asyncio
 
 class CreateAuthorIdList:
     def __init__(self,topic_ids: List[str],primary:bool,threshold:Optional[int],year_threshold:Optional[int],title_and_abstract_search:str,max_works:int,use_API_key = False):
@@ -105,13 +108,51 @@ class CreateAuthorIdList:
         ]
         self.authors_id_list = list(set(temp_authors_id_list))
     
-    def convert_keywords_to_or_condition(self,keywords:List[str]) -> str:
-        if not keywords:
-            return ""
-        # 各キーワードをクォートで囲み、ORで結合して括弧で囲む
-        quoted_keywords = [f'"{keyword}"' for keyword in keywords]
-        return f"({' OR '.join(quoted_keywords)})"
     
+    async def create_hindex_ranking(self):
+        if not self.authors_id_list:
+            raise Exception("extract_authorsをcreate_hindex_rankingより先に実行してください。")
+        
+        data_dict_list = []
+        # 著者ごとのh_indexを取得するためのヘルパー関数
+        def process_author(author_id):
+            fetcher = FetchAuthorEntity(author_id, use_API_key=self.use_API_key)
+            if fetcher.data:
+                h_index = fetcher.get_h_index()
+                return {"author_id": author_id, "h_index": h_index}
+            return None
+        
+        
+        max_workers = 50 if self.use_API_key else 6
+        length = 200
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_author, author_id): author_id for author_id in self.authors_id_list}
+            for future in as_completed(futures):
+                result = future.result()
+                if result is not None:
+                    data_dict_list.append(result)
+                    if len(data_dict_list) >= length:  
+                        await append_log_async(f"著者{length}人の処理が完了しました。")  #ログの追加
+                        length+=200
+                        
+        # h_indexが大きい順に並び替え
+        data_dict_list.sort(key=lambda x: x["h_index"], reverse=True)
+        
+        # 並び替えたリストに対して、順位（h_index_ranking）を追加する
+        if data_dict_list:
+            current_rank = 1
+            data_dict_list[0]["h_index_ranking"] = current_rank  # 最初の要素は1位
+            for i in range(1, len(data_dict_list)):
+                # 前の著者とh_indexが同じ場合は同順位とする
+                if data_dict_list[i]["h_index"] == data_dict_list[i - 1]["h_index"]:
+                    data_dict_list[i]["h_index_ranking"] = current_rank
+                else:
+                    # 異なる場合は、リスト上のインデックス+1を順位とする
+                    current_rank = i + 1
+                    data_dict_list[i]["h_index_ranking"] = current_rank
+
+        return data_dict_list
+                    
     def get_top_article(self,author_id):
         # 指定された著者IDに関連する論文を抽出
         author_dict_list = OpenAlexResultParser.author_dict_list_from_article_dict_list(self.article_dict_list, only_single_author_id=author_id)

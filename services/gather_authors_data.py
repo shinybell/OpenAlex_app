@@ -17,6 +17,7 @@ class GatherAuthorData:
     def __init__(self,author_id,max_workers=1,found_date="",use_API_key=False):
         self.article_dict_list = []
         self.author_id = extract_id_from_url(author_id)
+        self.author_id=self.author_id.upper()
         self.found_date = found_date
         self.max_workers = max_workers
         self.use_API_key =use_API_key
@@ -70,11 +71,9 @@ class GatherAuthorData:
                 
             #profileデータ→辞書
             self.profile = profile
-            profile_dict = profile.to_dict()
-            
-            return profile_dict
+            return self.profile
         else:
-            return {}
+            raise Exception("article_dict_listがFalseの時は、gathering_author_dataを実行してはいけません。")
         
     def coauthors_coauthor_data(self,key_list):
         sum_dict = {key: 0 for key in key_list}  
