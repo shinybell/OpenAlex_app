@@ -67,7 +67,7 @@ class OpenAlexPagenationDataFetcher:
                     retrial_num+=1
                     time.sleep(retrial_num) 
                     self.print_log(f"meta_data_getter retrial_num:{retrial_num},id:{self.id},Status Code:{response.status_code}")   
-                    if retrial_num>8:
+                    if retrial_num>20:
                         print("データなしと見なす")
                         return {},[]
                          

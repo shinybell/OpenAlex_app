@@ -163,8 +163,8 @@ class RequestData(BaseModel):
     title_and_abstract_search: str =""
     di_calculation: bool =False # DI計算（真偽値）
     output_sheet_name: str =""  # 出力シート名
-    stop_control:bool=True #実行後に自動でインスタンスを閉じる。
-    use_API_key:bool=False
+    stop_control:bool=False #実行後に自動でインスタンスを閉じる。
+    use_API_key:bool=True
 
 # エンドポイント: データを受け取って処理
 @app.post("/count_japanese/")
@@ -276,16 +276,25 @@ if __name__ == "__main__":
         #"author_info_source": "work",
         "topic_id": [],
         "primary": False,
-        "citation_count": 25,
+        "citation_count": 70,
         "publication_year": 2022,
         "title_and_abstract_search": "AI",
         "di_calculation": True,
         "output_sheet_name": "テスト1",
         "use_API_key":True
     }
-    #日本人118人
-    #GIL→True 0時間5分10秒
-    #GIL→False now
+    #日本人22人
+    #max_works = count_cores*30  person_num = 10 
+    #0時間0分57秒
+    #max_works = count_cores*30  person_num = 8 
+    #0時間0分49秒
+    #max_works = count_cores*30  person_num = 7
+    #0時間0分50秒
+    #max_works = count_cores*20  person_num = 8
+    
+    
+    #0時間1分16秒
+   
     
     async def main():
         # 非同期関数を直接実行
