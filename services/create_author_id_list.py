@@ -162,12 +162,12 @@ class CreateAuthorIdList:
 
         article = author_dict_list[0]
         article_dict = {
-            "世界ランキング":article.get("ranking",-1),
-            "総数":article.get("total_count",-1),
             "条件論文1:ID":article.get("Article ID",""),
             "条件論文1:タイトル":article.get("Title",""),
             "条件論文1:出版年月":article.get("Publication Date",""),
-            "条件論文1:被引用数":article.get("Cited By Count",0)
+            "条件論文1:被引用数":article.get("Cited By Count",0),
+            "世界ランキング":article.get("ranking",-1),
+            "総数":article.get("total_count",-1)
         }
         
         return article_dict

@@ -35,11 +35,15 @@ class FetchAuthorEntity:
                     data = response.json()
                     return data
                 else:
-                    if retrial_num>20:
+                    if retrial_num>30:
                         print(author_id,"の情報をauthorエンティティから収集できませんでした。")
                         return {}
                     print(author_id,"リクエストやり直し。retrial_num:",retrial_num)
-                    time.sleep(retrial_num)
+                    if retrial_num<7:
+                        time.sleep(retrial_num)
+                    else:
+                        time.sleep(2)
+                    
             except requests.exceptions.Timeout:
                 if retrial_num>8:
                     print(author_id,"の情報をauthorエンティティから収集できませんでした。")

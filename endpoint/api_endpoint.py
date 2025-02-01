@@ -183,6 +183,7 @@ async def process_count_japanese(request_data: RequestData):
             title_and_abstract_search=request_data.title_and_abstract_search,
             max_works = max_works
         )
+        
         await append_log_async(f"論文数を検索します。")  
         creater.run_get_works()
         creater.extract_authors(only_japanese=True)
@@ -283,19 +284,7 @@ if __name__ == "__main__":
         "output_sheet_name": "テスト1",
         "use_API_key":True
     }
-    #日本人22人
-    #max_works = count_cores*30  person_num = 10 
-    #0時間0分57秒
-    #max_works = count_cores*30  person_num = 8 
-    #0時間0分49秒
-    #max_works = count_cores*30  person_num = 7
-    #0時間0分50秒
-    #max_works = count_cores*20  person_num = 8
-    
-    
-    #0時間1分16秒
-   
-    
+
     async def main():
         # 非同期関数を直接実行
         #process_count_japanese
