@@ -367,4 +367,3 @@ if __name__ == "__main__":
             else:
                 print("サンプルは見つかりませんでした。")
         asyncio.run(main())
-        
