@@ -9,18 +9,16 @@ from collections import Counter
 
 class OpenAlexPagenationDataFetcher:
     
-    def __init__(self,endpoint_url, params,id,max_works,only_japanese=False,use_API_key=False,max_count_10000=True):
+    def __init__(self,endpoint_url, params,id,max_works,only_japanese=False,use_API_key=False,max_count_10000=False):
         load_dotenv()  # 追加
-        self.output_log =True
+        self.output_log =False
         self.max_count_10000 = max_count_10000
         self.max_workers =  max_works
         self.endpoint_url = endpoint_url
         self.params = params
         id = extract_id_from_url(id)
-        self.id=id.upper()
-        if self.id in ["A9999999999"]:
-            raise Exception(f"OpenAlexPagenationDataFetcherに不当なauthor_idが渡されました。{self.id}")
-        
+        self.id=id
+       
         self.only_japanese = only_japanese
         #self.correspondingR_results = []
 
@@ -71,7 +69,7 @@ class OpenAlexPagenationDataFetcher:
                 else:
                     retrial_num+=1
                     time.sleep(retrial_num) 
-                    self.print_log(f"meta_data_getter retrial_num:{retrial_num},id:{self.id},Status Code:{response.status_code}")   
+                    print(f"meta_data_getter retrial_num:{retrial_num},id:{self.id},Status Code:{response.status_code}")   
                     if retrial_num>20:
                         print("データなしと見なす")
                         return {},[]
@@ -112,7 +110,7 @@ class OpenAlexPagenationDataFetcher:
                     
                     retrial_num+=1
                     time.sleep(retrial_num)
-                    self.print_log(f"fetch_all_data_with_offset_pagination retrial_num:{retrial_num},id:{self.id},Status Code: {response.status_code}")
+                    print(f"fetch_all_data_with_offset_pagination retrial_num:{retrial_num},id:{self.id},Status Code: {response.status_code}")
                 
                 except requests.exceptions.Timeout:
                     print("リクエストがタイムアウトしました。再試行します。")

@@ -23,7 +23,7 @@ class Calculater:
             
         # OpenAlexPagenationDataFetcherのインスタンス生成
         fetcher = OpenAlexPagenationDataFetcher(   #引数にonly_japaneseを追加。 #"mailto":"ichiharabox@gmail.com"
-            cited_by_api_url, params={"per_page": 200}, id=focal_paper_id, max_works=1 ,only_japanese=False,use_API_key=use_API_key
+            cited_by_api_url, params={"per_page": 200}, id=focal_paper_id, max_works=1 ,only_japanese=False,use_API_key=use_API_key,max_count_10000=True
         )
         #被引用数が15未満であれば、計算しない。
         if len(fetcher.all_results)<15:

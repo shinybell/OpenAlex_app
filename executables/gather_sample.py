@@ -6,6 +6,7 @@ from typing import List, Optional
 from services.gather_authors_data import GatherAuthorData
 from api.new_fetch_author_entity import NewFetchAuthorEntity
 from utils.common_method import get_type_counts,extract_id_from_url
+from api.list_openAlex_fetcher import OpenAlexPagenationDataFetcher
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from services.get_global_data import GetJGlobalData
@@ -49,7 +50,7 @@ class GatheringSampleAuthor:
         # works_count と h_index に対して下限・上限を設定
         lower_works_count = int(self.works_count * 0.8)
         upper_works_count = int(self.works_count * 1.2)
-        lower_h_index = int(self.h_index * 0.8)
+        lower_h_index = int(self.h_index * 0.8) if not self.found_date else self.h_index
         upper_h_index = int(self.h_index * 1.2)
         
         # トピックフィルターの候補を作成
@@ -66,22 +67,26 @@ class GatheringSampleAuthor:
                 f"affiliations.institution.country_code:JP,"
                 # f"works_count:<{upper_works_count},"
                 # f"works_count:>{lower_works_count},"
-                f"summary_stats.h_index:<{upper_h_index},"
+                #f"summary_stats.h_index:<{upper_h_index},"
                 f"summary_stats.h_index:>{lower_h_index},"
                 f"{filt}"
             )
-            url = f"https://api.openalex.org/authors?filter={filter_str}&page=1&per-page=200"
-            # URLを確認（自動エンコードされることに注意）
-            #print("リクエストURL:", url)
-            response = requests.get(url, timeout=10)
-            if response.status_code != 200:
-                raise Exception(f"filter_authors の APIリクエストに失敗しました (ステータスコード: {response.status_code}): {response.text}")
-            data = response.json()
-            # 結果リスト内の各著者の id を抽出
-            return [extract_id_from_url(author.get("id")) for author in data.get("results", []) if author.get("id")]
-        
+
+            endpoint_url= "https://api.openalex.org/authors"
+            params = {
+                "filter":filter_str, 
+                "page": 1,
+                "per_page": 200,
+            }
+            fetcher = OpenAlexPagenationDataFetcher(endpoint_url,params,filters,self.max_works,use_API_key=self.use_API_key,max_count_10000=True)
+            author_id_list =[]
+            for result in fetcher.all_results:
+                author_id = extract_id_from_url(result["id"])
+                author_id_list.append(author_id)
+            return author_id_list
+               
         # 並列処理で各フィルター条件ごとのリクエストを実行
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(filters)) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             futures = [executor.submit(search_filter, filt) for filt in filters]
             for future in concurrent.futures.as_completed(futures):
                 try:
@@ -102,10 +107,12 @@ class GatheringSampleAuthor:
             """
             try:
                 print(author_id, "の調査")
-                author = GatherAuthorData(author_id=author_id,max_workers=20,use_API_key=self.use_API_key)
+                author = GatherAuthorData(author_id=author_id,max_workers=20,found_date=self.found_date,use_API_key=self.use_API_key)
                 author.run_fetch_works()
                 # if di_calculation:
                 #     author.di_calculation()
+                if not author.article_dict_list:
+                    return {}
                 profile = author.gathering_author_data()
                 
                 with self.lock:
@@ -116,10 +123,10 @@ class GatheringSampleAuthor:
                     self.profile_list_befor_ranking.append(temp_dict)
                 
                 profile_dict = profile.to_dict()
-                
-                # coauthor_data_dict = author.coauthors_coauthor_data(["works_count","total_works_citations","h_index","last_5_year_h_index","coauthor_from_company_count","first_paper_count","corresponding_paper_count","keyword_count","coauthor_count"])
-                # coauthor_data_dict = {f"coauthors_total_{key}": value for key, value in coauthor_data_dict.items()}
-                # profile_dict.update(coauthor_data_dict)
+                 
+                #profile_dict["h_index"]とself.h_index とのござが20%以上であれば、return {}をする
+                if self.h_index != 0 and abs(profile_dict["h_index"] - self.h_index) / self.h_index >= 0.2:
+                    return {}
                 
                 return profile_dict
             
@@ -130,17 +137,20 @@ class GatheringSampleAuthor:
                 raise
             
         self.sample_dict_list = []
-        with ThreadPoolExecutor(max_workers=8) as executor:  # max_workersは並列スレッド数
+        with ThreadPoolExecutor(max_workers=20) as executor:  # max_workersは並列スレッド数
             futures = {executor.submit(process_author, author_id): author_id for author_id in self.filtered_authors_ids}
             for future in as_completed(futures):
                 author_id = futures[future]
                 try:
                     result = future.result()  # 処理結果を取得
-                    self.sample_dict_list.append(result)
-                    print(f"{author_id}の抽出が完了しました")
+                    if result:
+                        self.sample_dict_list.append(result)
+                        print(f"{author_id}の抽出が完了しました")
+                    else:
+                        print(f"{author_id}は条件を満たしていませんでした。")
+                
                 except Exception as e: 
                     print("エラーが発生",e)
-                    sys.exit(1)
                     
         return self.sample_dict_list
     
@@ -190,7 +200,7 @@ class GatheringSampleAuthor:
         print(f"self.profile_list_after_ranking{len(self.profile_list_after_ranking)}")
         return self.sample_dict_list
 
-    def detail_sample_author_survey(self,need_sample_num=2):
+    def detail_sample_author_survey(self,need_sample_num=5):
         def process_author(entry): 
             """
             個々のauthor_idに対して処理を実行する関数
@@ -234,7 +244,6 @@ class GatheringSampleAuthor:
                     print(f"{author_id}の抽出が完了しました")
                 except Exception as e: 
                     print("エラーが発生",e)
-                    sys.exit(1)
                     
         return self.sample_dict_list_for_detail_surveyed
         
@@ -272,49 +281,90 @@ class GatheringSampleAuthor:
 
 if __name__ == "__main__":
     from api.spreadsheet_manager import SpreadsheetManager
-    sheet_manager = SpreadsheetManager("OpenAlex_App_Core8_テスト用（使用できません）", "テスト2")
+    sheet_manager = SpreadsheetManager("OpenAlex_App_Core8_テスト用（使用できません）", "シート7")
     sheet_manager.clear_rows_from_second()
     import asyncio
     
-    async def main():
-        print("スタート")
-        focul_author_id ="A5003851517"
-        sample_fetcher = GatheringSampleAuthor(
-            focul_author_id=focul_author_id,
-            max_works=100,
-            use_API_key=True
-        )
-        try:
-            print("search_focul_authorの実行")
-            sample_fetcher.search_focul_author()
-            # print("注目著者情報:")
-            # print(fetcher.top3_topic_ids)
-        except Exception as e:
-            print("注目著者情報の取得に失敗しました:", e)
-        
-        print(len(sample_fetcher.search_sample_authors_ids()))
-        sample_fetcher.search_sample_authors_info()
-        print("rank_samples_by_relevanceを実行します。")
-        sample_fetcher.rank_samples_by_relevance()
-        print("detail_sample_author_surveyを実行します。")
-        sample_dict_list = sample_fetcher.detail_sample_author_survey(need_sample_num=50)
-        # detail_sample_author_survey() の返り値に対して、focul_author_id を優先する処理を実行
-        sample_dict_list = sample_fetcher.ensure_focal_author_first(sample_dict_list)
-        
-        print(f"sample_dict_list:{len(sample_dict_list)}")
-        if sample_dict_list:
-            print("GetJGlobalDataを実行します。")
-            print(len(sample_dict_list))
-            GetJGlobalData(sample_dict_list,method="selenium")
-            print(len(sample_dict_list))
-            try:
-                print("アウトプットします。")
-                outputer = Outputer(sheet_manager,sample_dict_list,file_name=focul_author_id)
-                await outputer.batch_execute_for_display(analysis="sample")
-            except Exception as e:
-                print(f"シートへの出力でエラーがおきました。:{e}")
-            
-        else:
-            print("サンプルは見つかりませんでした。")
-    asyncio.run(main())
+    search_datas = [
+            {"author_id": "A5003851517", "date": "2000-11-30"},
+            {"author_id": "A5083819119", "date": "2015-10-30"},
+            {"author_id": "A5086954727", "date": "2014-05-30"},
+            {"author_id": "A5025005882", "date": "2013-09-30"},
+            {"author_id": "A5090933484", "date": "2000-01-30"},
+            {"author_id": "A5030628926", "date": "2006-03-30"},
+            {"author_id": "A5101423531", "date": "2020-07-30"},
+            {"author_id": "A5068623243", "date": "2011-12-30"},
+            {"author_id": "A5091245889", "date": "2013-04-30"},
+            {"author_id": "A5070039006", "date": "2019-05-30"},
+            {"author_id": "A5080592581", "date": "2001-06-30"},
+            {"author_id": "A5000934662", "date": "2021-10-30"},
+            {"author_id": "A5015575713", "date": "2013-04-30"},
+            {"author_id": "A5022179217", "date": "2020-05-30"},
+            {"author_id": "A5032937993", "date": "2021-10-30"},
+            {"author_id": "A5056768102", "date": "2022-04-30"},
+            {"author_id": "A5049247516", "date": "2015-01-30"},
+            {"author_id": "A5078848621", "date": "2023-08-30"},
+            {"author_id": "A5009948399", "date": "2021-10-30"},
+            {"author_id": "A5044701071", "date": "2012-03-30"},
+            {"author_id": "A5074657655", "date": "2015-07-30"},
+            {"author_id": "A5067635025", "date": "2018-03-30"},
+            {"author_id": "A5111693443", "date": "2006-02-28"},
+            {"author_id": "A5030655388", "date": "2011-01-30"},
+            {"author_id": "A5079890722", "date": "2018-03-30"},
+            {"author_id": "A5053538981", "date": "2019-09-30"},
+            {"author_id": "A5110807130", "date": "2020-05-30"},
+            {"author_id": "A5080247688", "date": "2018-03-30"},
+            {"author_id": "A5072763017", "date": "2023-03-30"},
+            {"author_id": "A5108409966", "date": "2014-11-30"},
+            {"author_id": "A5017619509", "date": "2007-01-30"},
+            {"author_id": "A5049418392", "date": "2008-08-30"},
+            {"author_id": "A5042369705", "date": "2022-07-30"},
+            {"author_id": "A5035444754", "date": "2022-03-30"},
+            {"author_id": "A5006109788", "date": "2005-01-30"},
+            {"author_id": "A5062105133", "date": "2019-03-30"},
+            {"author_id": "A5103484530", "date": "2021-10-30"},
+            {"author_id": "A5068133176", "date": "2018-03-30"},
+            {"author_id": "A5025139576", "date": "2005-07-30"}
+    ]
     
+    for idx,search_data in enumerate(search_datas,start=1):
+        async def main():
+            print("スタート")
+            focul_author_id =search_data["author_id"]
+            sample_fetcher = GatheringSampleAuthor(
+                focul_author_id=focul_author_id,
+                found_date = search_data["date"],
+                max_works=100,
+                use_API_key=True
+            )
+            
+            print(f"{idx}focul_authorの情報を検索")
+            sample_fetcher.search_focul_author()
+            print(f"{idx}候補となるauthor_idをauthorエンティティから取得")
+            data1 = sample_fetcher.search_sample_authors_ids()
+            print(f"{idx}見つかった候補数:",len(data1))
+            data = sample_fetcher.search_sample_authors_info()
+            print(f"{idx}見つかった情報のある候補数:{len(data)}/{data1}")
+            print(f"{idx}rank_samples_by_relevanceを実行します。")
+            sample_fetcher.rank_samples_by_relevance()
+            print(f"{idx}detail_sample_author_surveyを実行します。")
+            sample_dict_list = sample_fetcher.detail_sample_author_survey(need_sample_num=100)
+            # detail_sample_author_survey() の返り値に対して、focul_author_id を優先する処理を実行
+            sample_dict_list = sample_fetcher.ensure_focal_author_first(sample_dict_list)
+            print(f"{idx}用意できたサンプル数:",len(sample_dict_list))
+            if sample_dict_list:
+                # print("GetJGlobalDataを実行します。")
+                # print(len(sample_dict_list))
+                # GetJGlobalData(sample_dict_list,method="selenium")
+                # print(len(sample_dict_list))
+                try:
+                    print("アウトプットします。")
+                    outputer = Outputer(sheet_manager,sample_dict_list,file_name=focul_author_id)
+                    await outputer.batch_execute_for_display(analysis="sample")
+                except Exception as e:
+                    print(f"シートへの出力でエラーがおきました。:{e}")
+                
+            else:
+                print("サンプルは見つかりませんでした。")
+        asyncio.run(main())
+        
