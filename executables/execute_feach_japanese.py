@@ -1,6 +1,7 @@
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
-from utils.outputer import sort_dict_list_by_key,adjust_indicators, dict_list_to_string_rows, output_to_sheet, truncate_and_report_long_cells
+from api.jglobal_selenium_search import JGlobalSeleniumSearch
+from utils.outputer import Outputer
 from utils.common_method import count_logical_cores
 from services.create_author_id_list import CreateAuthorIdList
 from services.gather_authors_data import GatherAuthorData
@@ -8,12 +9,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from api.spreadsheet_manager import SpreadsheetManager
 from config.secret_manager import SecretManager
 from utils.async_log_to_sheet import append_log_async
+from services.get_global_data import GetJGlobalData
 import asyncio
 import time
 secret = SecretManager()
 
 #条件を指定して研究者リスト作成する
-async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_and_abstract_search='',di_calculation=False,output_sheet_name="API動作確認",use_API_key = False):
+async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_and_abstract_search='',di_calculation=False,output_sheet_name="API動作確認",use_API_key = False,need_J_Global=False):
     
     start_time = time.time()  # 実行開始時間を記録
     try:
@@ -52,13 +54,13 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                 
                 if not author.article_dict_list:
                     return {}
-                    
+                 
                 if di_calculation:
                     author.di_calculation()
                 
                 profile = author.gathering_author_data()
                 profile.h_index_ranking = next(
-                    (entry["h_index_ranking"] for entry in global_hindex_ranking_list if entry["author_id"] == author_id),
+                    (entry["h_index_ranking"] for entry in global_hindex_ranking_list if entry["id"] == author_id),
                     -200
                 )
                 profile.all_author_count = len(global_hindex_ranking_list)
@@ -84,7 +86,7 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                     result = future.result()  # 処理結果を取得
                     results_list.append(result)
                     
-                    if len(results_list) >= length:  
+                    if len(results_list) >= length:
                         await append_log_async(f"著者{length}人の処理が完了しました。")  #ログの追加
                         length+=5
                         
@@ -97,6 +99,11 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                     # イベントループに制御を戻す
                     await asyncio.sleep(0)
 
+        #GoogleCustomSearchとSeleniumをつかて、特許件数とJ-GLOBALでのresearcherリンクを取得
+        await append_log_async(f"J-GLOBALからデータを取得します。") #ログの追加
+        
+        if need_J_Global:
+            GetJGlobalData(results_list,method="search")
         
         end_time = time.time()  # 実行終了時間を記録
         elapsed_time = end_time - start_time  # 実行時間を計算
@@ -104,21 +111,15 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
         hours = int(elapsed_time // 3600)
         minutes = int((elapsed_time % 3600) // 60)
         seconds = int(elapsed_time % 60)
+        
         # フォーマット済みの文字列を作成
         formatted_time = f"{hours}時間{minutes}分{seconds}秒"
         await append_log_async(f"処理が終了しました。処理にかかった時間:{formatted_time}")  # ログの追加
 
         await append_log_async(f"スプレットシートに追加します。") 
-        
-        header,results_list = adjust_indicators(results_list)
-        
-        results_list = sort_dict_list_by_key(results_list,"total_works_citations")
-        
-        rows = dict_list_to_string_rows(results_list)
-        rows = truncate_and_report_long_cells(rows) #スプレットシートでは、１セル当たり5万文字までなので、長い文字列を削除
-        
-        await output_to_sheet(sheet_manager,header,rows) #スプレットシートに追加。
-        
+        outputer = Outputer(sheet_manager,results_list)
+        await outputer.batch_execute_for_display(analysis=False)
+
         return {"count_authors":len(results_list)}
     
     except ValueError as e:

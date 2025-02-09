@@ -67,5 +67,20 @@ def get_type_counts(author_id,type,found_date=""):
             result[display_name] = count
     return result
 
+
+def sort_dict_list_by_key(dict_list, sort_key):
+    """
+    辞書リストを指定したキーの値で降順にソートする関数。
+
+    :param dict_list: 辞書リスト (List[dict])
+    :param sort_key: ソートの基準となるキー名 (str)
+    :return: ソートされた辞書リスト (List[dict])
+    """
+    try:
+        sorted_list = sorted(dict_list, key=lambda x: x.get(sort_key, 0), reverse=True)
+        return sorted_list
+    except Exception as e:
+        raise Exception(f"ソートに失敗しました。エラー: {e}")
+
 if __name__ == "__main__":
     print(extract_id_from_url(None))

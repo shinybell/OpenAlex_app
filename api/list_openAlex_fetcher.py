@@ -9,14 +9,18 @@ from collections import Counter
 
 class OpenAlexPagenationDataFetcher:
     
-    def __init__(self,endpoint_url, params,id,max_works,only_japanese=False,use_API_key=False):
+    def __init__(self,endpoint_url, params,id,max_works,only_japanese=False,use_API_key=False,max_count_10000=True):
         load_dotenv()  # 追加
         self.output_log =True
+        self.max_count_10000 = max_count_10000
         self.max_workers =  max_works
         self.endpoint_url = endpoint_url
         self.params = params
         id = extract_id_from_url(id)
         self.id=id.upper()
+        if self.id in ["A9999999999"]:
+            raise Exception(f"OpenAlexPagenationDataFetcherに不当なauthor_idが渡されました。{self.id}")
+        
         self.only_japanese = only_japanese
         #self.correspondingR_results = []
 
@@ -28,9 +32,9 @@ class OpenAlexPagenationDataFetcher:
             # APIキーをクエリパラメータに追加
             self.params["api_key"] = self.api_key  # クエリパラメータとして追加
             self.params["mailto"] = "t.ichikawa.bnv@gmail.com"
-            print("APIキーを使っています。")
+            self.print_log("APIキーを使っています。")
         else:
-            print("APIキーを使っていません。")
+            self.print_log("APIキーを使っていません。")
             
         self.meta, self.all_results = self.meta_data_getter()
             
@@ -39,11 +43,12 @@ class OpenAlexPagenationDataFetcher:
                 pass
                 #print("１回目で終了")
             else:
-                if self.meta.get('count')<=10000:
+                if self.max_count_10000 or self.meta.get('count')<=10000:
                     #print("オフセット")
                     self.all_results.extend(self.fetch_all_data_with_offset_pagination())
                 else:
                     #print("カーソル")
+                    print(f"カーソル:\nendpoint_url: {self.endpoint_url}\n" + "\n".join([f"{key}: {value}" for key, value in self.params.items()]))
                     self.all_results.extend(self.fetch_all_data_with_cursor_pagination())
             
     def meta_data_getter(self):
@@ -52,7 +57,7 @@ class OpenAlexPagenationDataFetcher:
         while True:
             try: 
                 response = requests.get(self.endpoint_url, params=self.params,timeout=5)
-                print(response.url)
+                self.print_log(response.url)
                 if response.status_code == 200:  
                     data = response.json()
                     # メタデータの表示
@@ -74,16 +79,18 @@ class OpenAlexPagenationDataFetcher:
             except requests.exceptions.Timeout:
                 print("リクエストがタイムアウトしました。再試行します。")
             except Exception as e:
-                print("サーバーから遮断されたので1秒休憩します。")
+                print(f"サーバーから遮断されたので1秒休憩します。:{self.endpoint_url}/{self.params}")
                 time.sleep(1)
             
         # オフセットページネーションを使って並列処理をし、全ての結果を取得する関数　　#params['page']はこの関数の中で設定されている。
     def fetch_all_data_with_offset_pagination(self):
         all_results = []
         count = self.meta.get("count")
+        if self.max_count_10000 == True:
+            count = count if count<=10000 else 10000
         per_page = self.meta.get("per_page")
         total_pages = math.ceil(count / per_page) + 1
-
+        
         # 各ページのデータを並列処理で取得
         def execute_for_page(page):
             retrial_num=0
@@ -111,7 +118,7 @@ class OpenAlexPagenationDataFetcher:
                     print("リクエストがタイムアウトしました。再試行します。")
                 
                 except Exception as e:
-                    print("サーバーから遮断されたので1秒休憩します。")
+                    print(f"サーバーから遮断されたので1秒休憩します。:{self.endpoint_url}/{self.params}")
                     print(e)
                     time.sleep(1)
                     
@@ -157,7 +164,7 @@ class OpenAlexPagenationDataFetcher:
                     print("リクエストがタイムアウトしました。再試行します。")    
                 
                 except Exception as e:
-                    print("サーバーから遮断されたので1秒休憩します。")
+                    print(f"サーバーから遮断されたので1秒休憩します。:{self.endpoint_url}/{self.params}")
                     time.sleep(1)
                 
             #print(f"Failed to fetch data. Status Code: {response.status_code}")
@@ -165,7 +172,7 @@ class OpenAlexPagenationDataFetcher:
                 break
             
             if len(all_results)>30000:
-                print("30000個以上:",self.meta)
+                print(f"30000個以上:\nendpoint_url: {self.endpoint_url}\n" + "\n".join([f"{key}: {value}" for key, value in self.params.items()])+"\n"+self.meta)
                 break
 
             # 次のカーソルを取得してループを継続（最後のページでcursorがnullになる）
@@ -222,10 +229,10 @@ if __name__ == "__main__":
     #     "filter": f"author.id:{author_id},type_crossref:journal-article",
     #     "per_page":200
     # }
-    params={
-       "filter": "type:article,publication_year:>2020,cited_by_count:>50,authorships.institutions.country_code:JP",
-       "page": 1,
-       "per_page": 200,
+    params = {#type_crossref: "journal-article" #publication_date:"2018-02-13"#cited_by_count:>20#type_crossref:journal-article
+        "filter": f'author.id:A9999999999', #publication_date:<{found_date}>,#type:article',publication_year:2006'
+        "page": 1,
+        "per_page": 200,
     }
     
     fetcher = OpenAlexPagenationDataFetcher(endpoint_url, params,id="aaaaaa",max_works=100,only_japanese=False,use_API_key=True)

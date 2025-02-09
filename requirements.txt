@@ -57,3 +57,6 @@ uritemplate==4.1.1
 urllib3==1.26.20
 websockets==14.1
 yarl==1.18.3
+selenium
+webdriver-manager
+beautifulsoup4

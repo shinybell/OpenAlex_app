@@ -10,11 +10,11 @@ from utils.fetch_result_parser import OpenAlexResultParser, author_dict_list_to_
 from api.list_openAlex_fetcher import OpenAlexPagenationDataFetcher
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from utils.outputer import adjust_indicators
-
 
 class GatherAuthorData:
     def __init__(self,author_id,max_workers=1,found_date="",use_API_key=False):
+        if author_id in ["A9999999999"]:
+            raise ValueError(f"GatherAuthorDataに不当なauthor_idが渡されました。{self.id}")
         self.article_dict_list = []
         self.author_id = extract_id_from_url(author_id)
         self.author_id=self.author_id.upper()
@@ -69,7 +69,6 @@ class GatherAuthorData:
                 profile.article_type_crossref_dict = type_crossref_dict
                 profile.article_type_dict = type_dict
                 
-            #profileデータ→辞書
             self.profile = profile
             return self.profile
         else:
@@ -78,14 +77,15 @@ class GatherAuthorData:
     def coauthors_coauthor_data(self,key_list):
         sum_dict = {key: 0 for key in key_list}  
         coauthor_keys_list = list(self.profile.each_coauthor_count_dict.keys())
-
+        
         def process_coauthor(coauthor_id):
             coauthor = GatherAuthorData(coauthor_id, max_workers=1, found_date=self.found_date, use_API_key=self.use_API_key)
             coauthor.run_fetch_works()
             if not coauthor.article_dict_list:
                 return {}
-            profile_dict = coauthor.gathering_author_data()
-            
+            profile = coauthor.gathering_author_data()
+            profile_dict = profile.to_dict()
+
             return profile_dict
 
         # 並列処理
@@ -100,7 +100,9 @@ class GatherAuthorData:
                     for key in key_list:
                         value = profile_dict.get(key, 0)  # key が存在しない場合は 0 を返す
                         if isinstance(value, (int, float)):  # 数値型のみ合計
-                            sum_dict[key] += value
+                            count = self.profile.each_coauthor_count_dict.get(coauthor_id, 0)
+                            sum_dict[key] += value * count
+                            
                 except Exception as exc:
                     print(f"{coauthor_id} の処理中にエラーが発生しました: {exc}")
                     
@@ -184,8 +186,9 @@ if __name__ == "__main__":
     author = GatherAuthorData(author_id="https://openalex.org/A5076725199",max_workers=12)
     author.run_fetch_works()
     print(len(author.article_dict_list))
-    #author.di_calculation(max_workers=16)
+    #author.di_calculation()
     profile_dict = author.gathering_author_data()
+    
     coauthor_data_dict = author.coauthors_coauthor_data(["works_count","total_works_citations","h_index","last_5_year_h_index","coauthor_from_company_count","first_paper_count","corresponding_paper_count"])
     
     # 終了時間を記録
@@ -194,8 +197,6 @@ if __name__ == "__main__":
     elapsed_time = end_time - start_time
     print(f"処理時間: {elapsed_time:.2f} 秒")
     
-    _,new_list = adjust_indicators([profile_dict],["coauthor_from_company_count","source_id_count","each_source_id_count_dict"])
-    print(new_list)
     #print(coauthor_data_dict)
     
     

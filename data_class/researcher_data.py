@@ -4,7 +4,7 @@ from typing import Any, List, Dict, Optional, Union
 @dataclass
 class AuthorProfileData:
     # 研究者ID
-    researcher_id: str = ""  # 研究者の一意の識別子
+    author_id: str = ""  # 研究者の一意の識別子
     # 研究者名
     name: str = ""  # メインの名前
     # 研究者名（別名）
@@ -17,6 +17,10 @@ class AuthorProfileData:
     past_affiliations: str = ""  # 過去に所属していた機関の詳細
     # 所属機関の詳細
     detail_of_affiliation: List[Dict[str, Any]] = field(default_factory=list)  # 所属機関に関する詳細情報のリスト
+    #最初の所属機関
+    career_first_affiliation: List[Dict[str, Any]] = field(default_factory=list)  
+    #キャリア最初の年
+    first_career_year:int=0
     # 所属タイプ
     affiliation_type: Dict[str, int] = field(default_factory=dict)  # 所属のタイプとその説明
     # 教育以外の所属機関数
@@ -57,6 +61,8 @@ class AuthorProfileData:
     each_keywords_count_dict: Dict[str, int] = field(default_factory=dict)  # 各キーワードの出現回数
     #共著者数
     coauthor_count:int = 0
+    #共著回数
+    co_authorship_count:int = 0
     #共著者の詳細
     each_coauthor_count_dict: Dict[str, int] = field(default_factory=dict)
     # 共著者の所属機関タイプのカウント
@@ -92,7 +98,11 @@ class AuthorProfileData:
     article_type_dict: Dict[str, int] = field(default_factory=dict)  # 論文typeのデータ
     # ソースIDの集計
     each_source_id_count_dict: Dict[str, int] = field(default_factory=dict)  # ソースIDごとの出現回数
-    source_id_count: int = 0  # ユニークなソースIDの数
+    # ユニークなソースIDの数
+    source_id_count: int = 0 
+    #論文情報を入れる
+    papers_info: List[Dict[str, Any]] = field(default_factory=list)
+
 
     def to_dict(self) -> Dict:
         """Convert the data class to a dictionary."""
@@ -128,56 +138,6 @@ class AuthorProfileData:
         
         return flat_dict
 
-@dataclass
-class WorkData:
-    # 論文ID: 論文の一意の識別子
-    paper_id: str = ''
-    # タイトル: 論文のタイトル
-    title: str = ''
-    # 出版年: 論文の出版年
-    publication_year: str = ''
-    # 出版日: 論文の出版日（YYYY-MM-DD形式）
-    publication_date: str = ''
-    # ランディングページURL: 論文のランディングページのURL
-    landing_page_url: str = ''
-    # 著者: 論文の著者情報（名前のリスト形式）
-    authors: str = ''
-    # 著者情報: 著者に関する詳細情報のリスト
-    authors_info: List[Dict] = field(default_factory=list)
-    # 主題: 論文の主な研究テーマ
-    primary_topic: str = ''
-    # トピック: 論文に関連するトピックのリスト
-    topics: List[Dict] = field(default_factory=list)
-    # キーワード: 論文に関連するキーワードのリスト
-    keywords: List[Dict] = field(default_factory=list)
-    # 引用数: 論文が他の文献で引用された回数
-    referenced_citation_count: int = 0
-    # 被引用数: 論文に関連して他の文献で引用された総数
-    cited_by_count: int = 0
-    #fwci
-    fwci = int = 0
-
-    # 所属: 著者の所属機関
-    affiliation: str = ''
-    # 国コード: 所属機関の国コード
-    country_codes: str = ''
-    # 責任著者: 責任著者であるかどうか（True/False）
-    corresponding_author: bool = False
-    # ポジション: 著者の論文内でのポジション（例: First, Last, Middle）
-    position: str = ''
-    # 責任著者名: 責任著者の名前リスト
-    corresponding_author_names: List[str] = field(default_factory=list)
-    
-
-    # D-index: Disruption Index（論文の影響の新規性を評価する指標）
-    d_index: float = 0.0
-    # Impact指数: 論文のインパクトを示す指標
-    impact_index: float = 0.0
-
-
-    # 助成金: 論文に関連する助成金情報のリスト
-    grants: List[Dict] = field(default_factory=list)
-    
     
 @dataclass
 class AuthorWorkData:

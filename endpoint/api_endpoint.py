@@ -276,11 +276,11 @@ if __name__ == "__main__":
     request_data = {
         #"author_info_source": "work",
         "topic_id": [],
-        "primary": False,
+        "primary": True,
         "citation_count": 70,
         "publication_year": 2022,
         "title_and_abstract_search": "AI",
-        "di_calculation": True,
+        "di_calculation": False,
         "output_sheet_name": "テスト1",
         "use_API_key":True
     }

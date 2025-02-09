@@ -7,9 +7,10 @@ from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from utils.fetch_result_parser import OpenAlexResultParser, author_dict_list_to_author_work_data_list, author_dict_to_author_work_data
 from api.list_openAlex_fetcher import OpenAlexPagenationDataFetcher
-from services.fetch_auhtor_entity import FetchAuthorEntity
+from services.fetch_author_entity import FetchAuthorEntity
+from api.new_fetch_author_entity import NewFetchAuthorEntity
 from utils.format_change import title_and_abstract_search_format
-from utils.outputer import sort_dict_list_by_key
+from utils.common_method import sort_dict_list_by_key,extract_id_from_url
 from utils.async_log_to_sheet import append_log_async
 import asyncio
 
@@ -101,7 +102,7 @@ class CreateAuthorIdList:
             return any(inst.get('country_code') == "JP" for inst in institutions)
         
         temp_authors_id_list = [
-            author.get('author', {}).get('id', 'N/A')
+            extract_id_from_url(author.get('author', {}).get('id', 'N/A'))
             for result in self.all_results
             for author in result.get("authorships", [])
             if not only_japanese or is_japanese_author(author)
@@ -110,48 +111,65 @@ class CreateAuthorIdList:
     
     
     async def create_hindex_ranking(self):
+        """
+        著者IDリストから、NewFetchAuthorEntity を利用して 100 件ずつまとめて h-index を取得し、
+        h_index の降順にソートしてランキングを付与したリストを返します。
+        例:
+        [
+            {"id": "A5100705073", "h_index": 25, "h_index_ranking": 1},
+            {"id": "A5106315809", "h_index": 18, "h_index_ranking": 2},
+            ...
+        ]
+        :return: 著者ごとのID、h-index、ランキングをまとめた辞書のリスト
+        """
         if not self.authors_id_list:
             raise Exception("extract_authorsをcreate_hindex_rankingより先に実行してください。")
+        print("self.authors_id_listの数:",len(self.authors_id_list))
+        all_data_dict_list = []
+        chunk_size = 100  # 100件ずつ処理する
         
-        data_dict_list = []
-        # 著者ごとのh_indexを取得するためのヘルパー関数
-        def process_author(author_id):
-            fetcher = FetchAuthorEntity(author_id, use_API_key=self.use_API_key)
-            if fetcher.data:
-                h_index = fetcher.get_h_index()
-                return {"author_id": author_id, "h_index": h_index}
-            return None
+        # 著者IDリストをチャンクに分割
+        chunks = [self.authors_id_list[i:i+chunk_size] for i in range(0, len(self.authors_id_list), chunk_size)]
         
-        
+        # 並列処理のためのスレッドプール（APIキー使用時はより多くのスレッドを利用可能にしています）
         max_workers = 50 if self.use_API_key else 6
-        length = 200
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(process_author, author_id): author_id for author_id in self.authors_id_list}
+            # 各チャンクごとに _process_chunk を実行
+            futures = {executor.submit(self.__process_chunk, chunk): chunk for chunk in chunks}
             for future in as_completed(futures):
-                result = future.result()
-                if result is not None:
-                    data_dict_list.append(result)
-                    if len(data_dict_list) >= length:  
-                        await append_log_async(f"著者{length}人の処理が完了しました。")  #ログの追加
-                        length+=200
-                        
-        # h_indexが大きい順に並び替え
-        data_dict_list.sort(key=lambda x: x["h_index"], reverse=True)
+                data_dict_list = future.result()
+                if data_dict_list:
+                    all_data_dict_list.extend(data_dict_list)
+                    # 進捗ログの例（必要に応じて await してログ出力）
+                    if len(all_data_dict_list) % 10000 == 0:
+                        await append_log_async(f"現在、{len(all_data_dict_list)}人分のh-index情報を取得しました。")
         
-        # 並び替えたリストに対して、順位（h_index_ranking）を追加する
-        if data_dict_list:
+        # h_indexが大きい順に並び替え
+        all_data_dict_list.sort(key=lambda x: x["h_index"], reverse=True)
+        
+        # ランキングを付与（同じ h_index の場合は同順位とする）
+        if all_data_dict_list:
             current_rank = 1
-            data_dict_list[0]["h_index_ranking"] = current_rank  # 最初の要素は1位
-            for i in range(1, len(data_dict_list)):
-                # 前の著者とh_indexが同じ場合は同順位とする
-                if data_dict_list[i]["h_index"] == data_dict_list[i - 1]["h_index"]:
-                    data_dict_list[i]["h_index_ranking"] = current_rank
+            all_data_dict_list[0]["h_index_ranking"] = current_rank
+            for i in range(1, len(all_data_dict_list)):
+                if all_data_dict_list[i]["h_index"] == all_data_dict_list[i - 1]["h_index"]:
+                    all_data_dict_list[i]["h_index_ranking"] = current_rank
                 else:
-                    # 異なる場合は、リスト上のインデックス+1を順位とする
                     current_rank = i + 1
-                    data_dict_list[i]["h_index_ranking"] = current_rank
+                    all_data_dict_list[i]["h_index_ranking"] = current_rank
+        
+        print("all_data_dict_listの数:",len(all_data_dict_list))
+        return all_data_dict_list
 
-        return data_dict_list
+    def __process_chunk(self, chunk: list) -> list:
+        """
+        与えられた著者IDのチャンクに対して、NewFetchAuthorEntity を用い一括取得を行い、
+        get_authorid_and_hindex_list() の結果を返します。
+        :param chunk: 著者IDのリスト（最大 100件）
+        :return: 著者ごとのIDとh-indexをまとめた辞書のリスト
+        """
+        fetcher = NewFetchAuthorEntity(chunk, use_api_key=self.use_API_key)
+        return fetcher.get_authorid_and_hindex_list()
                     
     def get_top_article(self,author_id):
         # 指定された著者IDに関連する論文を抽出
@@ -166,7 +184,7 @@ class CreateAuthorIdList:
             "条件論文1:タイトル":article.get("Title",""),
             "条件論文1:出版年月":article.get("Publication Date",""),
             "条件論文1:被引用数":article.get("Cited By Count",0),
-            "世界ランキング":article.get("ranking",-1),
+            "引用数ランキング":article.get("ranking",-1),
             "総数":article.get("total_count",-1)
         }
         

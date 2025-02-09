@@ -6,8 +6,6 @@ from utils.common_method import extract_id_from_url
 class OpenAlexResultParser:
     
      #all_resultsから、authorIDなどの著者情報だけを抽出する関数を作る。
-    
-    
     def works_dict_list_from_works_results(all_results):
         try:
             article_dict_template = {
@@ -113,7 +111,7 @@ class OpenAlexResultParser:
                     "Author Name": author_info.get("author", {}).get("display_name", "N/A"),
                     "Author Position": author_info.get("author_position", "N/A"),
                     "Is Corresponding": author_info.get("is_corresponding", False),
-                    "Affiliation": ", ".join([inst.get("display_name", "N/A") for inst in author_info.get("institutions", [])]),
+                    "Affiliation": [inst.get("display_name", "N/A") for inst in author_info.get("institutions", [])],
                     "Institutions": author_info.get("institutions", []),
                     "Country Codes": ", ".join([
                         inst.get("country_code", "N/A") if inst.get("country_code", "N/A") is not None else "N/A"

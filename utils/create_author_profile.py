@@ -17,7 +17,7 @@ def create_author_profile(author_work_data_list: List[AuthorWorkData]) -> Author
         return AuthorProfileData()
 
     author_id = researcher_ids.pop()
-    profile = AuthorProfileData(researcher_id=author_id)
+    profile = AuthorProfileData(author_id=author_id)
 
     # 名前のカウント用
     name_counter = count_names(author_work_data_list)
@@ -25,6 +25,8 @@ def create_author_profile(author_work_data_list: List[AuthorWorkData]) -> Author
     
     profile.latest_affiliation, profile.latest_country = get_latest_affiliation_and_country(author_work_data_list)
 
+    profile.career_first_affiliation = get_first_affiliation_and_country(author_work_data_list)
+    
     # Works数のカウント
     profile.works_count = len(author_work_data_list)
 
@@ -45,6 +47,17 @@ def create_author_profile(author_work_data_list: List[AuthorWorkData]) -> Author
     
     # 全ての論文からデータを集約
     for work in author_work_data_list:
+        # ここで各論文の情報をpapers_infoに追加する
+        paper_dict = {
+            "paper_id": work.paper_id,
+            "paper_title": work.paper_title,
+            "position": work.position,
+            "total_citations": work.total_citations,
+            "d_index": work.d_index,
+            "publication_date": work.publication_date
+        }
+        profile.papers_info.append(paper_dict)
+        
         publication_year = work.publication_year if work.publication_year else None
         for inst in work.institutions:
             inst_id = inst.get('id', 'N/A')
@@ -53,22 +66,32 @@ def create_author_profile(author_work_data_list: List[AuthorWorkData]) -> Author
 
             if inst_id == "N/A":
                 continue
-
+            
+            # 新たに取得する inst_type (空文字の場合は "N/A" とする)
+            new_inst_type = inst.get("type", "").strip().lower() if inst.get("type", "").strip() else "N/A"
+        
             # 一意な所属機関に追加
             if inst_id not in detail_of_affiliation:
                 detail_of_affiliation[inst_id] = {
                     'Institution ID': inst_id,
                     'Institution Name': inst_name,
                     'Country Code': country_code,
+                    'inst_type': new_inst_type,
                     'Years': set()
                 }
                 # 所属タイプの集計
-                if inst.get("type", ""):
-                    inst_type = inst.get("type", "").strip().lower()
-                    if inst_type:
-                        institution_types[inst_type] += 1
-                        if inst_type != "education":
-                            profile.non_education_affiliation_count += 1
+                if new_inst_type != "N/A" and new_inst_type:
+                    institution_types[new_inst_type] += 1
+                    if new_inst_type != "education":
+                        profile.non_education_affiliation_count += 1
+
+            else:
+                # エントリが既に存在する場合、inst_type の更新のみを検討
+                current_inst_type = detail_of_affiliation[inst_id].get("inst_type", "N/A")
+                if current_inst_type == "N/A" and new_inst_type != "N/A":
+                    # 以前は N/A だったものを、新しい有効な値で上書き
+                    detail_of_affiliation[inst_id]["inst_type"] = new_inst_type
+
 
             # 論文の出版年を使用して Years を更新
             if isinstance(publication_year, int):
@@ -134,6 +157,8 @@ def create_author_profile(author_work_data_list: List[AuthorWorkData]) -> Author
             else:
                 print(f"Unexpected type for institutions: {type(institutions)}")
 
+    #論文リストのソート
+    profile.papers_info.sort(key=lambda paper: paper["publication_date"], reverse=True)
     # 所属タイプをプロファイルに設定
     profile.affiliation_type = dict(institution_types)
 
@@ -163,8 +188,6 @@ def create_author_profile(author_work_data_list: List[AuthorWorkData]) -> Author
     
     profile.total_cited_by_other_field = dict(citation_counter)
 
-
-
     # 名前の設定: 最も頻繁に出現する名前を 'name' に設定し、その他を 'alternate_name' に追加
     if name_counter:
         most_common_name, _ = name_counter.most_common(1)[0]
@@ -175,11 +198,12 @@ def create_author_profile(author_work_data_list: List[AuthorWorkData]) -> Author
     # トピックの集計を関数に分割して実行
     aggregated_topics = aggregate_topics(profile.topics_detail)
     profile.topics_detail = aggregated_topics
-
     # overseas_period の計算を関数に分割して実行
     profile.overseas_period = calculate_overseas_period(profile.detail_of_affiliation)
     # career_years の計算を関数に分割して実行
     profile.career_years = calculate_career_years(profile.detail_of_affiliation)
+     #キャリア最初の年
+    profile.first_career_year = get_career_earliest_year(profile.detail_of_affiliation)
     # h_index の計算を関数に分割して実行
     profile.h_index = calculate_h_index(author_work_data_list)
     # 過去5年のh_index の計算を関数に分割して実行
@@ -190,15 +214,13 @@ def create_author_profile(author_work_data_list: List[AuthorWorkData]) -> Author
     profile.last_10_year_h_index = calculate_h_index(author_work_data_list)
     # I10 Index の計算を関数に分割して実行
     profile.i10_index = calculate_i10_index(author_work_data_list)
-    
-    
-    
     # キーワードの集計処理を count_keywords 関数に委譲
     profile.each_keywords_count_dict = count_keywords(author_work_data_list)
     profile.keyword_count = sum(profile.each_keywords_count_dict.values())
-
     # 共著者の集計結果をプロファイルに設定
     profile.each_coauthor_count_dict = dict(coauthor_counter)
+    #共著回数
+    profile.co_authorship_count = sum(profile.each_coauthor_count_dict.values())
     # 辞書を値の大きい順にソート
     sorted_coauthor_dict = dict(sorted(profile.each_coauthor_count_dict.items(), key=lambda item: item[1], reverse=True))
     # ソートされた辞書を profile に再設定
@@ -209,8 +231,9 @@ def create_author_profile(author_work_data_list: List[AuthorWorkData]) -> Author
     # 共著者の所属機関タイプのカウントをプロファイルに設定
     profile.coauthor_type_counter = dict(coauthor_type_counter)
     profile.coauthor_from_company_count = profile.coauthor_type_counter["company"] if "company" in profile.coauthor_type_counter else 0
-    # ソースIDの集計結果をプロファイルに設定
-    profile.each_source_id_count_dict = dict(source_id_counter)
+    
+    # ソースIDのカウント結果を、値が大きい順に並び替えてから辞書に変換する
+    profile.each_source_id_count_dict = dict(sorted(source_id_counter.items(), key=lambda item: item[1], reverse=True))
     profile.source_id_count = len(source_id_counter)
     return profile
 
@@ -493,8 +516,43 @@ def get_latest_affiliation_and_country(author_work_data_list: List[AuthorWorkDat
     latest_affiliation = latest_country = []
     for work in sorted_works:
         if work.affiliation:
-            latest_affiliation = [work.affiliation]
-            latest_country = [work.country_codes]
+            latest_affiliation = work.affiliation
+            latest_country = work.country_codes
+            break
+    return latest_affiliation, latest_country
+
+
+def get_first_affiliation_and_country(author_work_data_list: List[AuthorWorkData]):
+    # 出版年および出版日の昇順（古い順）にソートする
+    sorted_works = sorted(
+        author_work_data_list,
+        key=lambda x: (
+            x.publication_year if x.publication_year else 0,
+            x.publication_date if x.publication_date else ""
+        )
+    )
+    
+    institutions = []
+    # ソートされたリストの先頭から所属機関情報がある論文を探す
+    for work in sorted_works:
+        if work.affiliation:
+            institutions = work.institutions
             break
     
-    return latest_affiliation, latest_country
+    return institutions
+
+def get_career_earliest_year(detail_of_affiliation: List[Dict[str, Any]]) -> int:
+        """
+        institutions: 各辞書は 'Years' キーに年のリストを持つ
+        すべての 'Years' の中で最も古い年を返す
+        """
+        earliest = float('inf')
+        for inst in detail_of_affiliation:
+            years = inst.get("Years", [])
+            if years:
+                # 現在の辞書内の最小の年を取得
+                min_year = min(years)
+                if min_year < earliest:
+                    earliest = min_year
+        # 該当する年がない場合は None を返す（ここでは int を返すことを前提）
+        return earliest if earliest != float('inf') else None
