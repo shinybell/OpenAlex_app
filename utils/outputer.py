@@ -18,8 +18,8 @@ class Outputer:
                 header,results_list = self.__adjust_indicators(self.results_list,analysis=True)
                 header,results_list = self.prepend_sample_evaluation(header,results_list)
                 Outputer.output_csv_to_local(results_list,file_name=self.file_name)
-                rows = Outputer.dict_list_to_string_rows(results_list)
-                await self.__output_to_spread_sheet(header,rows) #スプレットシートに追加。
+                #rows = Outputer.dict_list_to_string_rows(results_list)
+                #await self.__output_to_spread_sheet(header,rows) #スプレットシートに追加。
             
             else:
                 header,results_list = self.__adjust_indicators(self.results_list)
