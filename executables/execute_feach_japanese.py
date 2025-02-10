@@ -10,12 +10,13 @@ from api.spreadsheet_manager import SpreadsheetManager
 from config.secret_manager import SecretManager
 from utils.async_log_to_sheet import append_log_async
 from services.get_global_data import GetJGlobalData
+from utils.common_method import extract_id_from_url
 import asyncio
 import time
 secret = SecretManager()
 
 #条件を指定して研究者リスト作成する
-async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_and_abstract_search='',di_calculation=False,output_sheet_name="API動作確認",use_API_key = False,need_J_Global=False):
+async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_and_abstract_search='',di_calculation=False,output_sheet_name="API動作確認",use_API_key = False,need_J_Global=True):
     
     start_time = time.time()  # 実行開始時間を記録
     try:
@@ -37,6 +38,7 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
         creater.extract_authors()
         await append_log_async(f"論文数:{len(creater.all_results)},研究者数:{len(creater.authors_id_list)}")  # ログの追加
         global_hindex_ranking_list = await creater.create_hindex_ranking()
+        print(f"global_hindex_ranking_listの数:{len(global_hindex_ranking_list)}")
         creater.extract_authors(only_japanese=True)
         await append_log_async(f"日本人著者数:{len(creater.authors_id_list)}")  #ログの追加
         
@@ -60,8 +62,8 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                 
                 profile = author.gathering_author_data()
                 profile.h_index_ranking = next(
-                    (entry["h_index_ranking"] for entry in global_hindex_ranking_list if entry["id"] == author_id),
-                    -200
+                    (entry["h_index_ranking"] for entry in global_hindex_ranking_list if extract_id_from_url(entry["id"]) == extract_id_from_url(author_id)),
+                    -100
                 )
                 profile.all_author_count = len(global_hindex_ranking_list)
                 profile_dict = profile.to_dict()
@@ -100,10 +102,11 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                     await asyncio.sleep(0)
 
         #GoogleCustomSearchとSeleniumをつかて、特許件数とJ-GLOBALでのresearcherリンクを取得
-        await append_log_async(f"J-GLOBALからデータを取得します。") #ログの追加
+        
         
         if need_J_Global:
-            GetJGlobalData(results_list,method="search")
+            await append_log_async(f"J-GLOBALからデータを取得します。") #ログの追加
+            GetJGlobalData(results_list,method="selenium")#selenium or search
         
         end_time = time.time()  # 実行終了時間を記録
         elapsed_time = end_time - start_time  # 実行時間を計算

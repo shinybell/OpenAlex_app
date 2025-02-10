@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class GatherAuthorData:
     def __init__(self,author_id,max_workers=1,found_date="",use_API_key=False):
-        if author_id in ["A9999999999"]:
+        if extract_id_from_url(author_id) in ["A9999999999"]:
             raise ValueError(f"GatherAuthorDataに不当なauthor_idが渡されました。{self.id}")
         self.article_dict_list = []
         self.author_id = extract_id_from_url(author_id)
@@ -57,7 +57,7 @@ class GatherAuthorData:
                 except Exception as exc:
                     print(f"{article['ID']} の処理中にエラーが発生しました#D-indexとimpactの計算: {exc}")
 
-    def gathering_author_data(self,get_type_counts_info=False):
+    def gathering_author_data(self,get_type_counts_info=False ,release=False) :
         if self.article_dict_list:
             author_dict_list = OpenAlexResultParser.author_dict_list_from_article_dict_list(self.article_dict_list, only_single_author_id=self.author_id)
             authorWoorkData_list = author_dict_list_to_author_work_data_list(author_dict_list)
@@ -69,6 +69,9 @@ class GatherAuthorData:
                 profile.article_type_crossref_dict = type_crossref_dict
                 profile.article_type_dict = type_dict
                 
+            if release:
+                self.article_dict_list = None
+            
             self.profile = profile
             return self.profile
         else:

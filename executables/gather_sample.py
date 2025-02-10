@@ -55,11 +55,14 @@ class GatheringSampleAuthor:
         
         # トピックフィルターの候補を作成
         # 例として self.top3_topics は ["Txxxx", "Tyyyy", "Tzzzz"] などのリストである前提
-        filters = [
-            f"topics.id:{self.top3_topics[0]}+{self.top3_topics[1]}+{self.top3_topics[2]}",
-            f"topics.id:{self.top3_topics[0]}+{self.top3_topics[1]}",
-            f"topics.id:{self.top3_topics[0]}"
-        ]
+        filters = []
+        if len(self.top3_topics) >= 3:
+            filters.append(f"topics.id:{self.top3_topics[0]}+{self.top3_topics[1]}+{self.top3_topics[2]}")
+        if len(self.top3_topics) >= 2:
+            filters.append(f"topics.id:{self.top3_topics[0]}+{self.top3_topics[1]}")
+        if len(self.top3_topics) >= 1:
+            filters.append(f"topics.id:{self.top3_topics[0]}")
+        
         filtered_authors_set = set()
         
         def search_filter(filt: str) -> List[str]:
@@ -137,15 +140,16 @@ class GatheringSampleAuthor:
                 raise
             
         self.sample_dict_list = []
-        with ThreadPoolExecutor(max_workers=20) as executor:  # max_workersは並列スレッド数
-            futures = {executor.submit(process_author, author_id): author_id for author_id in self.filtered_authors_ids}
+        max_workers = 16 if self.use_API_key else 8
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:  # max_workersは並列スレッド数
+            futures = {executor.submit(process_author, author_id): author_id for author_id in self.filtered_authors_ids[:1000]}
             for future in as_completed(futures):
                 author_id = futures[future]
                 try:
                     result = future.result()  # 処理結果を取得
                     if result:
                         self.sample_dict_list.append(result)
-                        print(f"{author_id}の抽出が完了しました")
+                        print(f"{len(self.sample_dict_list)}人目の{author_id}の抽出が完了しました")
                     else:
                         print(f"{author_id}は条件を満たしていませんでした。")
                 
@@ -212,7 +216,7 @@ class GatheringSampleAuthor:
                 
                 print(author_id, "の調査")
                 author.di_calculation()
-                profile = author.gathering_author_data(get_type_counts_info=True)
+                profile = author.gathering_author_data(get_type_counts_info=True,release=True)
                 profile_dict = profile.to_dict()
                 
                 profile_dict["topic_score"] = topic_score
@@ -233,15 +237,16 @@ class GatheringSampleAuthor:
                 raise
             
         self.sample_dict_list_for_detail_surveyed = []
+        max_workers = 5 if self.use_API_key else 1
         print(f"{len(self.profile_list_after_ranking[:need_sample_num])}個のサンプルを用意します。")
-        with ThreadPoolExecutor(max_workers=6) as executor:  # max_workersは並列スレッド数
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:  # max_workersは並列スレッド数
             futures = {executor.submit(process_author, entry): entry["author_id"] for entry in self.profile_list_after_ranking[:need_sample_num]}
             for future in as_completed(futures):
                 author_id = futures[future]
                 try:
                     result = future.result()  # 処理結果を取得
                     self.sample_dict_list_for_detail_surveyed.append(result)
-                    print(f"{author_id}の抽出が完了しました")
+                    print(f"{len(self.sample_dict_list_for_detail_surveyed)}人目の{author_id}の抽出が完了しました")
                 except Exception as e: 
                     print("エラーが発生",e)
                     
@@ -281,50 +286,20 @@ class GatheringSampleAuthor:
 
 if __name__ == "__main__":
     from api.spreadsheet_manager import SpreadsheetManager
-    sheet_manager = SpreadsheetManager("OpenAlex_App_Core8_テスト用（使用できません）", "シート7")
-    sheet_manager.clear_rows_from_second()
+    # sheet_manager = SpreadsheetManager("OpenAlex_App_Core8_テスト用（使用できません）", "シート7")
+    # sheet_manager.clear_rows_from_second()
     import asyncio
     
     search_datas = [
-            {"author_id": "A5003851517", "date": "2000-11-30"},
-            {"author_id": "A5083819119", "date": "2015-10-30"},
-            {"author_id": "A5086954727", "date": "2014-05-30"},
-            {"author_id": "A5025005882", "date": "2013-09-30"},
-            {"author_id": "A5090933484", "date": "2000-01-30"},
-            {"author_id": "A5030628926", "date": "2006-03-30"},
-            {"author_id": "A5101423531", "date": "2020-07-30"},
-            {"author_id": "A5068623243", "date": "2011-12-30"},
-            {"author_id": "A5091245889", "date": "2013-04-30"},
-            {"author_id": "A5070039006", "date": "2019-05-30"},
-            {"author_id": "A5080592581", "date": "2001-06-30"},
-            {"author_id": "A5000934662", "date": "2021-10-30"},
-            {"author_id": "A5015575713", "date": "2013-04-30"},
-            {"author_id": "A5022179217", "date": "2020-05-30"},
-            {"author_id": "A5032937993", "date": "2021-10-30"},
-            {"author_id": "A5056768102", "date": "2022-04-30"},
-            {"author_id": "A5049247516", "date": "2015-01-30"},
-            {"author_id": "A5078848621", "date": "2023-08-30"},
-            {"author_id": "A5009948399", "date": "2021-10-30"},
-            {"author_id": "A5044701071", "date": "2012-03-30"},
-            {"author_id": "A5074657655", "date": "2015-07-30"},
-            {"author_id": "A5067635025", "date": "2018-03-30"},
-            {"author_id": "A5111693443", "date": "2006-02-28"},
-            {"author_id": "A5030655388", "date": "2011-01-30"},
-            {"author_id": "A5079890722", "date": "2018-03-30"},
-            {"author_id": "A5053538981", "date": "2019-09-30"},
-            {"author_id": "A5110807130", "date": "2020-05-30"},
-            {"author_id": "A5080247688", "date": "2018-03-30"},
-            {"author_id": "A5072763017", "date": "2023-03-30"},
-            {"author_id": "A5108409966", "date": "2014-11-30"},
-            {"author_id": "A5017619509", "date": "2007-01-30"},
-            {"author_id": "A5049418392", "date": "2008-08-30"},
-            {"author_id": "A5042369705", "date": "2022-07-30"},
-            {"author_id": "A5035444754", "date": "2022-03-30"},
-            {"author_id": "A5006109788", "date": "2005-01-30"},
-            {"author_id": "A5062105133", "date": "2019-03-30"},
-            {"author_id": "A5103484530", "date": "2021-10-30"},
-            {"author_id": "A5068133176", "date": "2018-03-30"},
-            {"author_id": "A5025139576", "date": "2005-07-30"}
+        {"author_id": "A5030217409", "date": "2023-08-30"},
+        {"author_id": "A5101808502", "date": "2023-08-30"},
+        {"author_id": "A5026752869", "date": "2020-03-30"},
+        {"author_id": "A5078848621", "date": "2023-08-30"},
+        {"author_id": "A5103484530", "date": "2021-10-30"}
+        # {"author_id": "A5052888381", "date": "2015-09-30"},
+        # {"author_id": "A5022074108", "date": "2022-03-30"},
+        # {"author_id": "A5065473780", "date": "2022-11-30"}    
+       
     ]
     
     for idx,search_data in enumerate(search_datas,start=1):
@@ -334,7 +309,7 @@ if __name__ == "__main__":
             sample_fetcher = GatheringSampleAuthor(
                 focul_author_id=focul_author_id,
                 found_date = search_data["date"],
-                max_works=100,
+                max_works=20,
                 use_API_key=True
             )
             
@@ -344,11 +319,11 @@ if __name__ == "__main__":
             data1 = sample_fetcher.search_sample_authors_ids()
             print(f"{idx}見つかった候補数:",len(data1))
             data = sample_fetcher.search_sample_authors_info()
-            print(f"{idx}見つかった情報のある候補数:{len(data)}/{data1}")
+            print(f"{idx}見つかった情報のある候補数:{len(data)}/{len(data1)}")
             print(f"{idx}rank_samples_by_relevanceを実行します。")
             sample_fetcher.rank_samples_by_relevance()
             print(f"{idx}detail_sample_author_surveyを実行します。")
-            sample_dict_list = sample_fetcher.detail_sample_author_survey(need_sample_num=100)
+            sample_dict_list = sample_fetcher.detail_sample_author_survey(need_sample_num=10)
             # detail_sample_author_survey() の返り値に対して、focul_author_id を優先する処理を実行
             sample_dict_list = sample_fetcher.ensure_focal_author_first(sample_dict_list)
             print(f"{idx}用意できたサンプル数:",len(sample_dict_list))
@@ -359,7 +334,7 @@ if __name__ == "__main__":
                 # print(len(sample_dict_list))
                 try:
                     print("アウトプットします。")
-                    outputer = Outputer(sheet_manager,sample_dict_list,file_name=focul_author_id)
+                    outputer = Outputer(results_list=sample_dict_list,file_name=focul_author_id)
                     await outputer.batch_execute_for_display(analysis="sample")
                 except Exception as e:
                     print(f"シートへの出力でエラーがおきました。:{e}")

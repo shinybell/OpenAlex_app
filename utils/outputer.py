@@ -7,7 +7,7 @@ from utils.common_method import extract_id_from_url
 
 class Outputer:
         
-    def __init__(self,sheet_manager,results_list,file_name=""):
+    def __init__(self,sheet_manager="",results_list=[],file_name=""):
         self.sheet_manager = sheet_manager
         self.results_list = results_list
         self.file_name = file_name

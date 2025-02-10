@@ -46,7 +46,10 @@ class NewFetchAuthorEntity:
         # filter パラメータの作成例: "id:A5100705073|A5106315809"
         filter_value = "id:" + "|".join(self.author_ids)
         url = "https://api.openalex.org/authors"
-        params = {"filter": filter_value}
+        params = {
+            "filter": filter_value,
+            "per_page":100
+            }
 
         # API キー使用の場合はヘッダーに Authorization を設定（Bearerトークン形式）
     
@@ -387,8 +390,8 @@ if __name__ == "__main__":
 
 
     print("\n【全著者のID】")
-    print(fetcher.get_author_id())
-    print(fetcher.get_authorid_and_hindex_list())
+    print(fetcher.get_author_id("A5003851517"))
+    print(len(fetcher.get_authorid_and_hindex_list()))
 
     # print("\n【全著者の表示名】")
     # print(fetcher.get_display_name())
