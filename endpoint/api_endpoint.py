@@ -165,6 +165,7 @@ class RequestData(BaseModel):
     output_sheet_name: str =""  # 出力シート名
     stop_control:bool=False #実行後に自動でインスタンスを閉じる。
     use_API_key:bool=True
+    need_J_Global:bool=False
 
 # エンドポイント: データを受け取って処理
 @app.post("/count_japanese/")
@@ -246,7 +247,8 @@ async def process_feach_japanese(request_data: RequestData):
                 title_and_abstract_search=request_data.title_and_abstract_search,
                 di_calculation=request_data.di_calculation,
                 output_sheet_name=request_data.output_sheet_name,
-                use_API_key = request_data.use_API_key
+                use_API_key = request_data.use_API_key,
+                need_J_Global = request_data.need_J_Global
                 )
         
         this_instance_id = get_instance_id()
@@ -275,14 +277,15 @@ if __name__ == "__main__":
     # 非同期関数を呼び出すためにイベントループを使用
     request_data = {
         #"author_info_source": "work",
-        "topic_id": [],
+        "topic_id": ["T12385", "T13015", "T10225"],
         "primary": True,
-        "citation_count": 70,
-        "publication_year": 2022,
-        "title_and_abstract_search": "AI",
+        "citation_count": 50,
+        "publication_year": 2015,
+        "title_and_abstract_search": "",
         "di_calculation": False,
         "output_sheet_name": "テスト1",
-        "use_API_key":True
+        "use_API_key":True,
+        "need_J_Global":True
     }
 
     async def main():

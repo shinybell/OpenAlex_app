@@ -58,7 +58,7 @@ class NewFetchAuthorEntity:
             if not API_KEY:
                 raise ValueError("API_KEYが環境変数に設定されていません。")
             params["api_key"] = API_KEY
-            params["mailto"] = "t.ichikawa.bnv@gmail.com"
+            #params["mailto"] = "t.ichikawa.bnv@gmail.com"
         
         retrial_num=0
         while True:

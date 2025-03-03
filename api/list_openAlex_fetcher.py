@@ -1,4 +1,5 @@
-import os, sys; sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
+import os, sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 import requests
 from dotenv import load_dotenv
 import math
@@ -6,6 +7,10 @@ from concurrent.futures import ThreadPoolExecutor
 import time
 from utils.common_method import extract_id_from_url
 from collections import Counter
+
+class DataNotFoundError(Exception):
+    """データが見つからない場合のカスタム例外"""
+    pass
 
 class OpenAlexPagenationDataFetcher:
     
@@ -29,7 +34,7 @@ class OpenAlexPagenationDataFetcher:
                 raise ValueError("API_KEYが環境変数に設定されていません。")
             # APIキーをクエリパラメータに追加
             self.params["api_key"] = self.api_key  # クエリパラメータとして追加
-            self.params["mailto"] = "t.ichikawa.bnv@gmail.com"
+            #self.params["mailto"] = "t.ichikawa.bnv@gmail.com"
             self.print_log("APIキーを使っています。")
         else:
             self.print_log("APIキーを使っていません。")
@@ -66,6 +71,9 @@ class OpenAlexPagenationDataFetcher:
                     else:
                         return data.get("meta", {}),self.extract_japanese(data.get("results",[]))
                 
+                elif response.status_code == 403:
+                    raise DataNotFoundError("該当のデータは存在しません。")
+                
                 else:
                     retrial_num+=1
                     time.sleep(retrial_num) 
@@ -77,6 +85,8 @@ class OpenAlexPagenationDataFetcher:
             except requests.exceptions.Timeout:
                 print("リクエストがタイムアウトしました。再試行します。")
             except Exception as e:
+                if isinstance(e, DataNotFoundError):
+                    raise
                 print(f"サーバーから遮断されたので1秒休憩します。:{self.endpoint_url}/{self.params}")
                 time.sleep(1)
             
@@ -96,7 +106,7 @@ class OpenAlexPagenationDataFetcher:
                 try:
                     copied_params = self.params.copy()
                     copied_params["page"] = page
-                    response = requests.get(self.endpoint_url, params=copied_params,timeout=5)
+                    response = requests.get(self.endpoint_url, params=copied_params,timeout=8)
                     if response.status_code == 200:
                         data = response.json()
                         self.print_log(f"Fetched page {page} with {len(data['results'])} results.")
@@ -219,21 +229,20 @@ class OpenAlexPagenationDataFetcher:
             print(e)
         
 if __name__ == "__main__":
+    
     # author_id = "https://openalex.org/A5063724667"
     start_time = time.time()  # 実行開始時間を記録
     
     endpoint_url= "https://api.openalex.org/works"
-    # params={
-    #     "filter": f"author.id:{author_id},type_crossref:journal-article",
-    #     "per_page":200
-    # }
-    params = {#type_crossref: "journal-article" #publication_date:"2018-02-13"#cited_by_count:>20#type_crossref:journal-article
-        "filter": f'author.id:A9999999999', #publication_date:<{found_date}>,#type:article',publication_year:2006'
-        "page": 1,
-        "per_page": 200,
+    params={
+        "sample":10000,
+        "filter": "publication_year:>2010,language:en,primary_topic.domain.id:4,type:article",
+        "per_page":200,
+        "page":1,
+        "seed":321
     }
+    fetcher = OpenAlexPagenationDataFetcher(endpoint_url, params,id="aaaaaa",max_works=50,only_japanese=False,use_API_key=True)
     
-    fetcher = OpenAlexPagenationDataFetcher(endpoint_url, params,id="aaaaaa",max_works=100,only_japanese=False,use_API_key=True)
     print(fetcher.meta)
     
     end_time = time.time()  # 実行終了時間を記録

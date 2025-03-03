@@ -29,6 +29,7 @@ class Outputer:
                 await self.__output_to_spread_sheet(header,rows) #スプレットシートに追加。
         except Exception as e:
             raise ValueError(f"batch_execute_for_display関数内でエラーが起きました。:{e}")
+    
     def __adjust_indicators(self,dict_list,analysis=False):
         # 新しい辞書リストを格納するリスト
         if analysis:  
@@ -52,7 +53,7 @@ class Outputer:
                 "h_index", "last_5_year_h_index", "coauthor_from_company_count", "first_paper_count",
                 "corresponding_paper_count", "disruption_index_above_08",
                 "条件論文1:ID","条件論文1:タイトル","条件論文1:出版年月","条件論文1:被引用数","引用数ランキング","総数",
-                "論文1:ID","論文1:タイトル","論文1:出版年月","論文1:被引用数","j_global_link","patents_count"
+                "論文1:ID","論文1:タイトル","論文1:出版年月","論文1:被引用数","j_global_link","patents_count","bibliometric","entrepreneur"
                 # "論文2:ID","論文2:タイトル","論文2:出版年月","論文2:被引用数",
                 # "論文3:ID","論文3:タイトル","論文3:出版年月","論文3:被引用数",
             ]
@@ -124,7 +125,7 @@ class Outputer:
 
     def prepend_five_evaluation(self,header,dict_list):
         try:
-            header = ["検索リンク","研究の質","h-index世界ランク","若さ","特許件数","革新性"]+header
+            header = ["検索リンク","研究の質","h-index世界ランク","若さ","特許件数","革新性","起業意欲"]+header
             new_list = []
             for item in dict_list:
                 # item から "j_global_link" を取得（存在すれば取得して削除、存在しなければ None）
@@ -140,14 +141,20 @@ class Outputer:
                 #特許件数
                 patents_count = item.pop("patents_count", -200)
                 
+                #予測モデル
+                bibliometric = item.pop("bibliometric",-200)
+                entrepreneur = item.pop("entrepreneur",-200)
+                
                 # 新しいキーとその値
                 new_data = {
                     "Google検索": search_query,
                     "研究の質（h-index）": item.get("h_index", ""),
-                    "h-index世界ランク": item.get("h_index_ranking", ""),
+                    "h-index世界ランク": round(item.get("h_index_ranking", 0) / item.get("all_author_count", 1), 2),
                     "若さ（逆数）": youth_index,
                     "特許件数": patents_count, 
-                    "革新性（DI0.8以上のworks数）": item.get("disruption_index_above_08", "")
+                    "革新性（DI0.8以上のworks数）": item.get("disruption_index_above_08", ""),
+                    "起業意欲":bibliometric,
+                    #"論文時系列モデル":entrepreneur
                 }
                 # 既存のデータを新しいデータの後に追加
                 combined_data = {**new_data, **item}
@@ -177,8 +184,7 @@ class Outputer:
                     print(f"author_idが{item['author_id']}のtopics_detailが、{item['topics_detail']}です。")
                     top_five_topics_ids = []
                 
-                temp_box = item["topic_score"]
-                del item["topic_score"]
+                temp_box = item.pop("topic_score", None)
                 
                 jp_score = self.__compute_jp_score(item["country_affiliation_count"])
                 

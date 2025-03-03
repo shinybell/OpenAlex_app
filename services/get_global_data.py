@@ -13,12 +13,15 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 from selenium.common.exceptions import TimeoutException
 from urllib.parse import urlparse, urlunparse
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
+import tempfile
 
 class GetJGlobalData:
-    def __init__(self,results_list,method="search"):
+    def __init__(self, results_list, method="search"):
         self.results_list = results_list
-        self.method=method
-        if self.method =="search":
+        self.method = method
+        if self.method == "search":
             self.search_by_google_custom_search()
         else:
             self.search_in_research_map()
@@ -41,7 +44,7 @@ class GetJGlobalData:
                     jglobal_search = JGlobalCustomSearch(exact_terms=exact_terms)
                     if jglobal_search.get_jglobal_researcher_link_from_first_result():
                         if exact_terms[0] in jglobal_search.first_result_title and exact_terms[0] in jglobal_search.first_result_title:  
-                            result["j_global_link"]  = self.remove_en_from_jglobal_url(jglobal_search.get_jglobal_researcher_link_from_first_result())
+                            result["j_global_link"] = self.remove_en_from_jglobal_url(jglobal_search.get_jglobal_researcher_link_from_first_result())
                         break
             return
         
@@ -50,107 +53,13 @@ class GetJGlobalData:
         
 
     def search_in_research_map(self):
-        # Selenium ドライバーのセットアップ（ヘッドレスモード）
-        options = Options()
-        options.add_argument("--headless")
-        options.add_argument("--disable-gpu")
-        driver = webdriver.Chrome(options=options)
-        
-        base_url = "https://researchmap.jp"
-        for result in self.results_list:
-            
-            # result["name"]（検索する名前）を取得し、前後の空白を除去
-            name = result.get("name", "").strip()
-            if not name:
-                result["j_global_link"] = ""
-                continue
-
-            # 名前中のスペースを "+" に置換して、ダブルクォーテーションで囲む
-            # 例："Yutaka+Matsuo"
-            query = f'"{name.replace(" ", "+")}"'
-            search_url = f"{base_url}/researchers?q={query}&lang=en"
-            print(f"検索URL: {search_url}")
-            
-            try:# 検索結果ページにアクセス後、ページ全体の読み込みが完了するまで待機
-                driver.get(search_url)
-                WebDriverWait(driver, 10).until(
-                    lambda d: d.execute_script("return document.readyState") == "complete"
-                )
-            except TimeoutException:
-                print("タイムアウトにより検索結果の ul 要素が取得できませんでした。")
-                result["j_global_link"] = ""
-                continue
-            except Exception as e:
-                print(f"検索ページ読み込みエラー: {e}")
-                result["j_global_link"] = ""
-                continue
-
-            # ページソースを BeautifulSoup でパース
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-            ul_element = soup.find("ul", class_="list-inline rm-cv-card")
-            if not ul_element:
-                print("検索結果の ul 要素が見つかりませんでした。")
-                result["j_global_link"] = ""
-                continue
-
-            li_elements = ul_element.find_all("li")
-            matching_link = ""
-            latest_affiliations = result.get("latest_affiliation", [])
-            
-            # 各研究者カードをチェック
-            for li in li_elements:
-                affiliation_div = li.find("div", class_="rm-cv-card-name-affiliation")
-                if not affiliation_div:
-                    continue
-                aff_text = affiliation_div.get_text(strip=True)
-                # 最新所属リスト内のいずれかと完全一致するかチェック
-                for aff in latest_affiliations:
-                    if aff.strip() == aff_text:
-                        # 一致するカードが見つかったら、リンクを取得
-                        name_div = li.find("div", class_="rm-cv-card-name")
-                        if not name_div:
-                            continue
-                        a_tag = name_div.find("a")
-                        if not a_tag:
-                            continue
-                        researcher_link = a_tag.get("href")
-                        if researcher_link and researcher_link.startswith("/"):
-                            researcher_link = base_url + researcher_link
-                        print(f"一致する所属の研究者カードリンク: {researcher_link}")
-                        
-                        # 詳細ページを Selenium で取得
-                        try:
-                            driver.get(researcher_link)
-                            WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "div.panel.panel-default.rm-cv-panel"))
-                            )
-                        except Exception as e:
-                            print(f"詳細ページ読み込みエラー: {e}")
-                            continue
-                        
-                        detail_soup = BeautifulSoup(driver.page_source, "html.parser")
-                        panel_div = detail_soup.find("div", class_="panel panel-default rm-cv-panel")
-                        if not panel_div:
-                            print("詳細ページ内の対象パネルが見つかりませんでした。")
-                            continue
-                        
-                        a_tags = panel_div.find_all("a")
-                        for a in a_tags:
-                            href = a.get("href", "")
-                            if "https://jglobal.jst.go.jp/en/detail?JGLOBAL_ID=" in href:
-                                matching_link = href
-                                print(f"見つかった jGlobal リンク: {matching_link}")
-                                break
-                        if matching_link:
-                            break  # 内側の for-loop終了
-                if matching_link:
-                    break  # li ループ終了
-            
-            # 一致するリンクが見つかったかどうかを結果に設定
-            result["j_global_link"] = self.remove_en_from_jglobal_url(matching_link) if matching_link else ""
-        
-        # ドライバー終了
-        driver.quit()
+        try:
+            from api.research_map_search import JGlobalResearchMapSearch
+        except ImportError as e:
+            raise Exception("JGlobalResearchMapSearch モジュールの読み込みに失敗しました: " + str(e))
+        print("search_in_research_map関数 (外部クラス利用)")
+        jglobal_rm_search = JGlobalResearchMapSearch(data_set_list=self.results_list, max_work=3)
+        jglobal_rm_search.get_research_map_links()
         
     def selenium_search_for_patent(self):
         print("selenium_search_for_patent関数")
@@ -158,14 +67,14 @@ class GetJGlobalData:
         try:
             data_set_list = []
             for result in self.results_list: 
-                data_set ={
-                    "author_id":result["author_id"],
-                    "j_global_link":result["j_global_link"]
+                data_set = {
+                    "author_id": result["author_id"],
+                    "j_global_link": result["j_global_link"]
                 }
                 data_set_list.append(data_set)
             
             print(len(data_set_list))
-            jglobal_search = JGlobalSeleniumSearch(data_set_list,max_work=1)
+            jglobal_search = JGlobalSeleniumSearch(data_set_list, max_work=3)
             jglobal_search.get_patents_counts()
             patents_mapping = {
                 data["author_id"]: data.get("patents_count", -200)
@@ -179,8 +88,7 @@ class GetJGlobalData:
         except Exception as e:
             raise Exception(f"selenium_search_for_patent関数内でエラー:{e}")
         
-    
-    def remove_en_from_jglobal_url(self,url):
+    def remove_en_from_jglobal_url(self, url):
         """
         指定されたURLのパス部分に '/en/' が含まれていれば、最初の1箇所を '/' に置換して返す。
         
@@ -211,8 +119,7 @@ if __name__ == "__main__":
         }
     ]
     
-    get_jglobal = GetJGlobalData(sample_results)
-    get_jglobal.search_in_research_map()
+    get_jglobal = GetJGlobalData(sample_results,method="selenium")
     
     # 結果の確認
     for res in sample_results:

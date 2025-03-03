@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 class GatherAuthorData:
     def __init__(self,author_id,max_workers=1,found_date="",use_API_key=False):
         if extract_id_from_url(author_id) in ["A9999999999"]:
-            raise ValueError(f"GatherAuthorDataに不当なauthor_idが渡されました。{self.id}")
+            raise ValueError(f"GatherAuthorDataに不当なauthor_idが渡されました。{author_id}")
         self.article_dict_list = []
         self.author_id = extract_id_from_url(author_id)
         self.author_id=self.author_id.upper()
@@ -51,6 +51,8 @@ class GatherAuthorData:
             for future in as_completed(future_to_article):
                 article = future_to_article[future]
                 try:
+                    focal_paper_id = extract_id_from_url(article["ID"])
+                    print(f"{self.author_id}の{focal_paper_id}のDIを計算しました")
                     updated_article = future.result()
                     # 計算された disruption_index を元の article_dict_list に戻す
                     article.update(updated_article)
@@ -185,14 +187,14 @@ if __name__ == "__main__":
 
     # 開始時間を記録
     start_time = time.time()
-
-    author = GatherAuthorData(author_id="https://openalex.org/A5076725199",max_workers=12)
+    
+    author = GatherAuthorData(author_id="A5035429819",max_workers=12,found_date = "2024-07-30")
     author.run_fetch_works()
     print(len(author.article_dict_list))
     #author.di_calculation()
     profile_dict = author.gathering_author_data()
     
-    coauthor_data_dict = author.coauthors_coauthor_data(["works_count","total_works_citations","h_index","last_5_year_h_index","coauthor_from_company_count","first_paper_count","corresponding_paper_count"])
+    #coauthor_data_dict = author.coauthors_coauthor_data(["works_count","total_works_citations","h_index","last_5_year_h_index","coauthor_from_company_count","first_paper_count","corresponding_paper_count"])
     
     # 終了時間を記録
     end_time = time.time()

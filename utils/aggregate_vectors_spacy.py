@@ -96,6 +96,22 @@ def aggregate_vectors(data, baseline_date=None):
     }
     return result
 
+def vectorize_text(text):
+    """
+    指定した文字列 text を spaCy を用いてベクトル化し、そのベクトルを返します。
+    各トークンのベクトルの平均を計算して文字列全体のベクトルとします。
+    """
+    # 文字列を解析して Doc オブジェクトを作成
+    doc = nlp(text)
+    tokens = list(doc)
+    if tokens:
+        # 各トークンのベクトルの平均を計算
+        vector = np.sum([token.vector for token in tokens], axis=0) / len(tokens)
+    else:
+        # トークンが存在しない場合はゼロベクトルを返す
+        vector = np.zeros(nlp.vocab.vectors_length)
+    return vector
+
 # ======= 使用例 =======
 if __name__ == "__main__":
     data = []
@@ -121,3 +137,15 @@ if __name__ == "__main__":
     # # baseline_date を "2025-01-01" として指定する例
     # aggregated_vectors_custom = aggregate_vectors(data, baseline_date="2025-01-01")
     # print("Custom baseline (2025-01-01):", aggregated_vectors_custom)
+    
+    
+    
+    
+    
+    
+"""
+Test accuracy (全体): 0.6805555820465088
+Entrepreneur (起業研究者) 正答率: 0.14285714285714285
+Sample (一般研究者) 正答率: 0.8103448275862069
+
+"""

@@ -12,7 +12,7 @@ class Calculater:
     def calculate_disruption_index_for_article(article,found_date="",use_API_key=False):
         # フォーカルペーパーのID
         focal_paper_id = extract_id_from_url(article["ID"])
-        print(focal_paper_id,"のDIを計算します。")
+        #print(focal_paper_id,"のDIを計算します。")
         # フォーカルペーパーの引用先論文IDリスト
         referenced_works_list = list(map(extract_id_from_url, article["referenced_works"]))
         

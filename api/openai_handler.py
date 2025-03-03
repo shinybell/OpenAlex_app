@@ -8,10 +8,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import openai
 import json
 from datetime import datetime, timezone
+from openai import OpenAI
 
-class OpenAIHandler:
+class OpenAIHandler:#
     def __init__(self, api_key=None):
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        self.api_key = api_key or os.getenv('OPENAI_KEY')
         self.client = self.setting_assistant_client()
         self.thread_id =""
         # openai.api_key = self.api_key
@@ -279,8 +280,7 @@ class OpenAIHandler:
         except Exception as e:
             print(f"アシスタントの更新中にエラーが発生しました: {e}")
             raise
-    
-    
+     
     def display_assistants_list(self):
         # OpenAIクライアントの作成
         from openai import OpenAI
@@ -387,7 +387,6 @@ class OpenAIHandler:
         except Exception as e:
             print(f"全ベクトルストア削除中にエラーが発生しました: {e}")
             raise
-    
     
     def display_all_files_list(self):
         """
@@ -577,10 +576,93 @@ class OpenAIHandler:
                 raise
         print("削除処理が完了しました。")
         
+    def chatGPT_extract_info(self,order,text, json_flag=None):
+        
+        client = OpenAI(api_key=self.api_key)
+
+        response = client.chat.completions.create(
+        model="o3-mini-2025-01-31", #"gpt-4o-2024-08-06",
+        messages=[
+            {
+            "role": "system",
+            "content": order
+            },
+            {
+            "role": "user",
+            "content": text
+            }
+        ],
+        #temperature=0,
+        #max_tokens=16384,  # 最大トークン数を設定
+        #top_p=1
+        )
+
+        # choicesリストの最初のメッセージの内容を抽出
+        contents = response.choices[0].message.content
+        
+        try:
+            if json_flag ==True:
+                #print(contents)
+                return contents
+
+            else:
+                if contents.endswith('"]]'):
+                    print(f' 文章の終わりが「"]]」でした。:{contents}')
+                    contents = contents.replace('"]]','"]') #エラーの原因を取り除く。
+                    print("replaceで文の終わりを修正しました。")
+                
+                # 文字列をリストに変換して返す
+                contents = ast.literal_eval(contents)
+                #print(contents)
+                return contents
+            
+        except:
+            print(f"AIの回答が適切な形式ではなく、リストに変換できませんでした。:{contents}")
+            
+            return None
+        
 
 if __name__ == "__main__":
+    from config.secret_manager import SecretManager
+    secret = SecretManager()
     # OpenAI APIキーを設定
     handler = OpenAIHandler()
-    response = handler.delete_all_assistant()
+    order="""
+    与えられた英語の論文タイトルを基に、以下の質問に対して指定された形式で回答を行ってください。回答は、指定された形式に厳密に従い、リスト形式（配列形式）で出力してください。リスト内の各要素は、質問に対する直接的な回答のみを含むようにし、余計な情報や文脈の説明は含めないでください。
+
+    質問1: 日本語に訳してください。
+    質問2: 下記の定義に基づき、1~5を答えてください。文字ではなくint型で数字のみ答えてください。
+    基礎研究の定義
+    基礎研究とは、現象の根本的な仕組みや理論的な理解を追求し、新しい知識や原理を発見することを目的とした研究を指します。具体的には以下のような特徴があります：
+        •	理論的・抽象的：理論的な背景や現象の根本的な仕組みを探求する。
+        •	知識の探求：直接的な実用性を目指さず、学術的な知識や理解を深める。
+        •	一般的な法則や原理の発見：特定の現象や現象間の関係性を明らかにする。
+    例
+        •	分子や細胞レベルのメカニズムの解明
+        •	基礎的な理論の構築
+        •	観察研究やレビュー
+        •	病気との関連性の評価や発見
+        •   健康課題に関連する調査や分析
+        
+    応用研究の定義
+    応用研究とは、実際の課題解決や技術開発、製品の改良など、実用的な目的に向けて行われる研究を指します。以下の特徴があります：
+        •	実務的・実践的：現実の問題やニーズに対応し、具体的な成果を目指す。
+        •	技術や製品の開発：治療法、装置、薬品、技術などの実用化を目標とする。
+        •	患者や現場の問題解決：臨床試験や技術実装など、現実の課題にフォーカス。
+    例
+        •	新薬や治療法の開発
+        •	医療機器や装置の改良
+        •	実際の患者や現場に基づく臨床試験
     
-    #handler.delete_all_vector_stores()
+    質問3: 質問2の数字にした理由や根拠を述べてください。
+        
+    
+    出力例：出力例: ["質問1の回答", "質問2の回答(int型)","質問3"]
+    """
+    text = "Apparent difference in the way of RNA synthesis stimulation by two stimulatory factors of RNA polymerase II"
+    
+    
+    response = handler.chatGPT_extract_info(order,text)
+    print(response)
+    
+    

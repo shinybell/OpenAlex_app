@@ -11,12 +11,13 @@ from config.secret_manager import SecretManager
 from utils.async_log_to_sheet import append_log_async
 from services.get_global_data import GetJGlobalData
 from utils.common_method import extract_id_from_url
+from utils.predict_models import predict_bibliometric_percentage
 import asyncio
 import time
 secret = SecretManager()
 
 #条件を指定して研究者リスト作成する
-async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_and_abstract_search='',di_calculation=False,output_sheet_name="API動作確認",use_API_key = False,need_J_Global=True):
+async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_and_abstract_search='',di_calculation=False,output_sheet_name="API動作確認",use_API_key = False,need_J_Global=False):
     
     start_time = time.time()  # 実行開始時間を記録
     try:
@@ -62,15 +63,26 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                 
                 profile = author.gathering_author_data()
                 profile.h_index_ranking = next(
-                    (entry["h_index_ranking"] for entry in global_hindex_ranking_list if extract_id_from_url(entry["id"]) == extract_id_from_url(author_id)),
-                    -100
+                    (
+                        entry["h_index_ranking"]  # 計算せず、値をそのまま使用する
+                        for entry in global_hindex_ranking_list
+                        if extract_id_from_url(entry["id"]) == extract_id_from_url(author_id)
+                    ),
+                    -100  # 条件に合致するものがなかった場合は -100 を返す
                 )
+                
                 profile.all_author_count = len(global_hindex_ranking_list)
                 profile_dict = profile.to_dict()
                 works_data_dict = author.get_top_three_article()
                 top_searched_article = creater.get_top_article(author_id)
                 profile_dict.update(top_searched_article)
                 profile_dict.update(works_data_dict)
+                
+                predict_dict={
+                    "bibliometric":predict_bibliometric_percentage(profile_dict["last_5_year_h_index"],profile_dict["total_works_citations"], profile_dict["first_paper_count"]),
+                    #"entrepreneur":predict_entrepreneur_percentage(profile_dict["papers_info"])
+                }
+                profile_dict.update(predict_dict)
                 
                 return profile_dict
             
@@ -102,8 +114,7 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                     await asyncio.sleep(0)
 
         #GoogleCustomSearchとSeleniumをつかて、特許件数とJ-GLOBALでのresearcherリンクを取得
-        
-        
+
         if need_J_Global:
             await append_log_async(f"J-GLOBALからデータを取得します。") #ログの追加
             GetJGlobalData(results_list,method="selenium")#selenium or search
