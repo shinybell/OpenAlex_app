@@ -1,6 +1,6 @@
 from collections import defaultdict, Counter
 from typing import List, Dict, Any
-from data_class.researcher_data import ResearcherData,AuthorProfileData,AuthorWorkData
+from data_class.researcher_data import AuthorProfileData,AuthorWorkData
 from utils.common_method import extract_id_from_url
 from datetime import datetime
 from dateutil.relativedelta import relativedelta

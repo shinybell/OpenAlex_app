@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class GatherAuthorData:
     def __init__(self,author_id,max_workers=1,found_date="",use_API_key=False):
-        if extract_id_from_url(author_id) in ["A9999999999"]:
+        if extract_id_from_url(author_id) in ["A9999999999"]:#openAlexでは、不明な著者を"A9999999999"に入れているため、このIDが入力されたらエラーにする必要がある。
             raise ValueError(f"GatherAuthorDataに不当なauthor_idが渡されました。{author_id}")
         self.article_dict_list = []
         self.author_id = extract_id_from_url(author_id)
@@ -181,6 +181,8 @@ class GatherAuthorData:
     
 
 if __name__ == "__main__":
+    import csv
+    import json
     
     # secret = SecretManager()
     # sheet_manager = SpreadsheetManager("ジャーナル一覧", "シート1")
@@ -190,11 +192,42 @@ if __name__ == "__main__":
     
     author = GatherAuthorData(author_id="A5035429819",max_workers=12,found_date = "2024-07-30")
     author.run_fetch_works()
-    print(len(author.article_dict_list))
+    print(f"論文の出版数:{len(author.article_dict_list)}")
     #author.di_calculation()
     profile_dict = author.gathering_author_data()
-    
     #coauthor_data_dict = author.coauthors_coauthor_data(["works_count","total_works_citations","h_index","last_5_year_h_index","coauthor_from_company_count","first_paper_count","corresponding_paper_count"])
+    
+    # もしprofile_dictがAuthorProfileDataのインスタンスでto_dict()メソッドが存在する場合、辞書に変換する
+    if hasattr(profile_dict, "to_dict"):
+        profile_data = profile_dict.to_dict()
+    else:
+        profile_data = profile_dict
+
+    # 辞書内のリストや辞書型の値は、CSVに出力可能な文字列に変換
+    for key, value in profile_data.items():
+        if isinstance(value, (list, dict)):
+            profile_data[key] = json.dumps(value, ensure_ascii=False)
+
+    # 不要なカラムを削除
+    profile_data.pop("h_index_ranking", None)
+    profile_data.pop("all_author_count", None)
+
+    # CSVファイル名の指定
+    output_filename = "author_profile.csv"
+
+    # CSVに書き込み
+    with open(output_filename, "w", newline="", encoding="utf-8") as csvfile:
+        # 辞書のキーをフィールド名として使用
+        fieldnames = list(profile_data.keys())
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        
+        # ヘッダーを書き込む
+        writer.writeheader()
+        # profile_dataを1行として書き込む
+        writer.writerow(profile_data)
+
+    print(f"CSVファイル '{output_filename}' にプロファイル情報を出力しました。")
+    
     
     # 終了時間を記録
     end_time = time.time()

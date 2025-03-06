@@ -33,7 +33,7 @@ class Outputer:
     def __adjust_indicators(self,dict_list,analysis=False):
         # 新しい辞書リストを格納するリスト
         if analysis:  
-            not_need_keys =["annual_citation_count","annual_citation_growth_rate"]
+            not_need_keys =[]
             # dict_list 内の各辞書から not_need_keys に含まれるキーを削除する
             for item in dict_list:
                 for key in not_need_keys:

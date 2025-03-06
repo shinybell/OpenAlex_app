@@ -45,14 +45,8 @@ class AuthorProfileData:
     last_5_year_h_index: int = 0
     #過去10年のH-Index
     last_10_year_h_index: int = 0
-    # 過去2年間の平均被引用数
-    two_year_mean_citedness: float = 0.0  # 過去2年間の平均被引用数
     # I10 Index
     i10_index: int = 0  # 10回以上引用された論文の数
-    # 年次の被引用数
-    annual_citation_count: List[int] = field(default_factory=list)  # 各年ごとの被引用数
-    # 年次の被引用数の伸び率
-    annual_citation_growth_rate: Dict[str, int] = field(default_factory=dict)
     # Topicsの詳細
     topics_detail: List[Dict[str, Any]] = field(default_factory=list)  # 研究テーマの詳細リスト
     #キーワード数
@@ -233,14 +227,8 @@ class ResearcherData:
     total_works_citations: int = 0  # 全Worksの被引用数の合計
     # H-Index
     h_index: int = 0  # H-Index（被引用数と論文数のバランスを示す指標）
-    # 過去2年間の平均被引用数
-    two_year_mean_citedness: float = 0.0  # 過去2年間の平均被引用数
     # I10 Index
     i10_index: int = 0  # 10回以上引用された論文の数
-    # 年次の被引用数
-    annual_citation_count: List[int] = field(default_factory=list)  # 各年ごとの被引用数
-    # 年次の被引用数の伸び率
-    annual_citation_growth_rate: str = ""  # 被引用数の年次ごとの成長率（例：+10%、-5%）
     # Topicsの詳細
     topics_detail: List[str] = field(default_factory=list)  # 研究テーマの詳細リスト
     # キーワードの数（非引用数が20以上）
