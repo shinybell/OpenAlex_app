@@ -13,6 +13,7 @@ from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urlparse, urlunparse
 
+
 class JGlobalResearchMapSearch:
     def __init__(self, data_set_list, max_work=5):
         """

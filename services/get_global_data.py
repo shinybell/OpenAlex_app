@@ -2,28 +2,26 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from api.google_custom_search import JGlobalCustomSearch
-from api.jglobal_selenium_search import JGlobalSeleniumSearch
-import requests
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import time
-from selenium.common.exceptions import TimeoutException
+from scraping.jglobal_selenium_search import JGlobalSeleniumSearch
 from urllib.parse import urlparse, urlunparse
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
-import tempfile
+
+#####注意#####
+#これは、研究者データが載っている、jglobal(https://jglobal.jst.go.jp/)というサイトから、研究者の特許情報を取得するための、スクレイピングコードです。
+#しかし、現在のコードのままでは、EC2上では使えず、ローカル環境でのみ動作しますので、もしjglobalから特許情報を取得するロジックを追加したい場合は、下記の修正が必要です。
+#・chromeがないEC2でも動作するように修正
+#・現在のコードでは、OpenAlex上のデータとjglobal上のデータで研究者の最新の所属機関情報が異なると見つけられない。
+
+
 
 class GetJGlobalData:
     def __init__(self, results_list, method="search"):
         self.results_list = results_list
         self.method = method
         if self.method == "search":
+            #倫理的な問題を回避する方法だが、google custom search API を使用する。
             self.search_by_google_custom_search()
         else:
+            #こちらは、robots.txtに違反し、倫理的な問題が伴う方法。
             self.search_in_research_map()
         
         self.selenium_search_for_patent()
@@ -54,7 +52,7 @@ class GetJGlobalData:
 
     def search_in_research_map(self):
         try:
-            from api.research_map_search import JGlobalResearchMapSearch
+            from scraping.research_map_search import JGlobalResearchMapSearch
         except ImportError as e:
             raise Exception("JGlobalResearchMapSearch モジュールの読み込みに失敗しました: " + str(e))
         print("search_in_research_map関数 (外部クラス利用)")

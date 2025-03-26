@@ -16,7 +16,6 @@ from utils.aggregate_vectors_spacy import aggregate_vectors
 
 class GatheringSampleAuthor:
     def __init__(self,focul_author_id: str,found_date = "",max_works = 80,use_API_key = True):
-       
         self.focul_author_id = extract_id_from_url(focul_author_id) #このauhorのサンプルを調べる
         self.found_date = found_date #いつまでのデータが欲しいか
         self.max_works = max_works
@@ -45,10 +44,9 @@ class GatheringSampleAuthor:
             f"Cited by Count: {self.cited_by_count}\n"
             f"career_years:{self.career_years}\n"
         )
-                        
+
     def search_sample_authors_ids(self) -> List[str]:
         #search_focul_authorで調べて得たサンプルの基準となるデータをもとに、authorエンティティ候補となるauthorIDを取得する。
-        
         # works_count と h_index に対して下限・上限を設定
         lower_works_count = int(self.works_count * 0.8)
         upper_works_count = int(self.works_count * 1.2)
@@ -62,8 +60,9 @@ class GatheringSampleAuthor:
             filters.append(f"topics.id:{self.top3_topics[0]}+{self.top3_topics[1]}+{self.top3_topics[2]}")
         if len(self.top3_topics) >= 2:
             filters.append(f"topics.id:{self.top3_topics[0]}+{self.top3_topics[1]}")
-            filters.append(f"topics.id:{self.top3_topics[0]}+{self.top3_topics[2]}")
-            filters.append(f"topics.id:{self.top3_topics[1]}+{self.top3_topics[2]}")
+            if len(self.top3_topics) >= 3:
+                filters.append(f"topics.id:{self.top3_topics[0]}+{self.top3_topics[2]}")
+                filters.append(f"topics.id:{self.top3_topics[1]}+{self.top3_topics[2]}")
         if len(self.top3_topics) >= 1:
             filters.append(f"topics.id:{self.top3_topics[0]}")
         
@@ -85,6 +84,7 @@ class GatheringSampleAuthor:
                 "page": 1,
                 "per_page": 200,
             }
+
             fetcher = OpenAlexPagenationDataFetcher(endpoint_url,params,filters,self.max_works,use_API_key=self.use_API_key,max_count_10000=True)
             author_id_list =[]
             for result in fetcher.all_results:
@@ -299,45 +299,37 @@ if __name__ == "__main__":
     # sheet_manager.clear_rows_from_second()
     import asyncio
     
-    search_datas = [#ソフトウェア/アプリ
-        {"date": "2017/08/30", "author_id": "A5042410446"},
-        {"date": "2022/07/30", "author_id": "A5034708867"},
-        {"date": "2022/03/30", "author_id": "A5070315511"},
-        {"date": "2013/11/30", "author_id": "A5063896943"},
-        {"date": "2018/03/30", "author_id": "A5069794526"},
-        {"date": "2014/09/30", "author_id": "A5037803109"},
-        {"date": "2020/01/30", "author_id": "A5080895628"},
-        {"date": "2018/07/30", "author_id": "A5037718511"},
-        {"date": "2016/04/30", "author_id": "A5112292144"},
-        {"date": "2001/04/30", "author_id": "A5110502296"},
-        {"date": "2021/12/30", "author_id": "A5112653589"},
-        {"date": "2005/11/30", "author_id": "A5001431702"},
-        {"date": "2014/09/30", "author_id": "A5101584052"},
-        {"date": "2018/11/30", "author_id": "A5052996420"},
-        {"date": "2017/03/30", "author_id": "A5030484228"},
-        {"date": "2004/04/30", "author_id": "A5074039834"},
-        {"date": "2022/02/28", "author_id": "A5110784260"},
-        {"date": "2020/10/30", "author_id": "A5037675237"},
-        {"date": "2011/11/30", "author_id": "A5014835275"},
-        {"date": "2020/01/30", "author_id": "A5043867612"},
-        {"date": "2008/01/30", "author_id": "A5011588138"},
-        {"date": "2023/05/30", "author_id": "A5111344876"},
-        {"date": "2005/05/30", "author_id": "A5108639576"},
-        {"date": "2008/09/30", "author_id": "A5050981333"},
-        {"date": "2019/10/30", "author_id": "A5102327755"},
-        {"date": "2017/03/30", "author_id": "A5103003713"},
-        {"date": "2018/04/30", "author_id": "A5028226308"},
-        {"date": "1994/12/30", "author_id": "A5111675992"},
-        {"date": "2015/09/30", "author_id": "A5069123778"},
-        {"date": "2013/11/30", "author_id": "A5108297324"},
-        {"date": "2004/03/30", "author_id": "A5034359695"},
-        {"date": "2016/04/30", "author_id": "A5103787030"},
-        {"date": "2018/11/30", "author_id": "A5052996420"},
-        {"date": "2022/09/30", "author_id": "A5057961231"},
-        {"date": "2018/03/30", "author_id": "A5111677477"},
-        {"date": "2018/11/30", "author_id": "A5039757363"},
-        {"date": "2018/03/30", "author_id": "A5080053416"}
+    search_datas =[#素材
+        # { "date": "2011-10-30", "author_id": "A5030736937" },
+        # { "date": "1998-01-30", "author_id": "A5060076928" },
+        # { "date": "2019-06-30", "author_id": "A5035462996" },
+        # { "date": "2007-12-30", "author_id": "A5043655680" },
+        # { "date": "2013-03-30", "author_id": "A5070869694" },
+        # { "date": "2021-06-30", "author_id": "A5012590890" },
+        # { "date": "2015-02-28", "author_id": "A5022077244" },
+        # { "date": "2009-08-30", "author_id": "A5011590619" },
+        # { "date": "2009-05-30", "author_id": "A5067451015" },
+        # { "date": "2021-06-30", "author_id": "A5015575713" },
+        # { "date": "2021-09-30", "author_id": "A5025885120" },
+        # { "date": "2013-06-30", "author_id": "A5113820054" },
+        # { "date": "2022-03-30", "author_id": "A5033873325" },
+        # { "date": "2018-05-30", "author_id": "A5110819687" },
+        # { "date": "2021-12-30", "author_id": "A5079961982" },
+        # { "date": "2013-08-30", "author_id": "A5079646148" },
+        # { "date": "2015-10-30", "author_id": "A5110523173" },
+        # { "date": "2015-12-30", "author_id": "A5017554585" },
+        # { "date": "2017-12-30", "author_id": "A5024304487" },
+        # { "date": "2015-06-30", "author_id": "A5046939841" },
+        #{ "date": "2023-03-30", "author_id": "A5002649642" },
+        #{ "date": "2016-03-30", "author_id": "A5014931992" },
+        #{ "date": "2015-02-28", "author_id": "A5019456799" },
+        #{ "date": "2009-05-30", "author_id": "A5028255656" },
+        { "date": "2021-06-30", "author_id": "A5069148446" },
+        { "date": "2018-05-30", "author_id": "A5081368490" },
+        { "date": "2015-02-28", "author_id": "A5052749272" },
+        { "date": "2021-06-30", "author_id": "A5014166632" }
     ]
+
 
 
     for idx,search_data in enumerate(search_datas,start=1):
@@ -374,7 +366,7 @@ if __name__ == "__main__":
                     try:
                         print("アウトプットします。")
                         outputer = Outputer(results_list=sample_dict_list,file_name=focul_author_id)
-                        await outputer.batch_execute_for_display(analysis="sample")
+                        await outputer.batch_execute_for_display(output_mode="sample")
                     except Exception as e:
                         print(f"シートへの出力でエラーがおきました。:{e}")
                     
@@ -386,3 +378,8 @@ if __name__ == "__main__":
             print(f"{e}")
             print(f'{search_data["author_id"]}は存在しませんでした。')
             
+            
+            
+            
+            
+  

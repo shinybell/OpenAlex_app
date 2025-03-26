@@ -72,6 +72,9 @@ class NewFetchAuthorEntity:
                     break
             except requests.exceptions.Timeout:
                 print("リクエストがタイムアウトしました。再試行します。")
+            
+            except Exception as e:
+                print("再試行します。エラー:",e)
             finally:
                 retrial_num+=1
                 time.sleep(1)

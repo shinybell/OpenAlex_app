@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
-from api.jglobal_selenium_search import JGlobalSeleniumSearch
+from scraping.jglobal_selenium_search import JGlobalSeleniumSearch
 from utils.outputer import Outputer
 from utils.common_method import count_logical_cores
 from services.create_author_id_list import CreateAuthorIdList
@@ -9,15 +9,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from api.spreadsheet_manager import SpreadsheetManager
 from config.secret_manager import SecretManager
 from utils.async_log_to_sheet import append_log_async
-from services.get_global_data import GetJGlobalData
 from utils.common_method import extract_id_from_url
-from utils.predict_models import predict_bibliometric_percentage
+from utils.predict_models import extract_keys_from_dict, get_education_value, get_jp_value, rui_predict_model
 import asyncio
 import time
 secret = SecretManager()
 
 #条件を指定して研究者リスト作成する
-async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_and_abstract_search='',di_calculation=False,output_sheet_name="API動作確認",use_API_key = False,need_J_Global=False):
+async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_and_abstract_search='',di_calculation=False,output_sheet_name="API動作確認",use_API_key = False,output_mode=""):
     
     start_time = time.time()  # 実行開始時間を記録
     try:
@@ -58,7 +57,7 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                 if not author.article_dict_list:
                     return {}
                  
-                if di_calculation:
+                if di_calculation and output_mode!="simple":
                     author.di_calculation()
                 
                 profile = author.gathering_author_data()
@@ -77,11 +76,48 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                 top_searched_article = creater.get_top_article(author_id)
                 profile_dict.update(top_searched_article)
                 profile_dict.update(works_data_dict)
-                
-                predict_dict={
-                    "bibliometric":predict_bibliometric_percentage(profile_dict["last_5_year_h_index"],profile_dict["total_works_citations"], profile_dict["first_paper_count"]),
-                    #"entrepreneur":predict_entrepreneur_percentage(profile_dict["papers_info"])
-                }
+                raw_keys = [
+                    "total_works_citations",
+                    "career_years",
+                    "coauthor_count",
+                    "first_paper_count",
+                    "country_affiliation_count",
+                    "affiliation_type",
+                    "coauthor_type_counter",
+                    "last_5_year_h_index"
+                ]
+
+                # raw な値だけの
+                dict_for_rui_model = extract_keys_from_dict(profile_dict, raw_keys)
+                if dict_for_rui_model is None:
+                    predict_dict = {
+                        "predict_model": -200,
+                    }
+                    print("extract_keys_from_dictが失敗")
+                else:
+                     # 各 raw 値を取得し、float 化（辞書型の値は必要に応じて get_jp_value, get_education_value を使用）
+                    career_years = float(dict_for_rui_model["career_years"])
+                    processed_last_5_year_h_index = float(dict_for_rui_model["last_5_year_h_index"])
+                    processed_career_year_adjust_coauthor_count = float(dict_for_rui_model["coauthor_count"]) / career_years
+                    processed_career_year_adjust_first_paper_count = float(dict_for_rui_model["first_paper_count"]) / career_years
+                    processed_career_year_adjust_JP = get_jp_value(dict_for_rui_model["country_affiliation_count"]) / career_years
+                    processed_career_year_adjust_education = get_education_value(dict_for_rui_model["affiliation_type"]) / career_years
+                    processed_career_year_adjust_coauthor_education = get_education_value(dict_for_rui_model["coauthor_type_counter"])
+                    processed_career_year_adjust_citations = float(dict_for_rui_model["total_works_citations"]) / career_years
+
+                    args = [
+                        processed_last_5_year_h_index,
+                        processed_career_year_adjust_coauthor_count,
+                        processed_career_year_adjust_education,
+                        processed_career_year_adjust_coauthor_education,
+                        processed_career_year_adjust_JP,
+                        processed_career_year_adjust_first_paper_count,
+                        processed_career_year_adjust_citations
+                    ]
+                    predict_dict = {
+                        "predict_model": rui_predict_model(*args),
+                    }
+                    
                 profile_dict.update(predict_dict)
                 
                 return profile_dict
@@ -113,11 +149,12 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                     # イベントループに制御を戻す
                     await asyncio.sleep(0)
 
-        #GoogleCustomSearchとSeleniumをつかて、特許件数とJ-GLOBALでのresearcherリンクを取得
 
-        if need_J_Global:
-            await append_log_async(f"J-GLOBALからデータを取得します。") #ログの追加
-            GetJGlobalData(results_list,method="selenium")#selenium or search
+        #GoogleCustomSearchとSeleniumをつかて、特許件数とJ-GLOBALでのresearcherリンクを取得
+        #EC2では動作しないのでコメントアウツ中。必要に応じて追加開発して下さい。
+        #if need_J_Global:
+            # await append_log_async(f"J-GLOBALからデータを取得します。") #ログの追加
+            # GetJGlobalData(results_list,method="selenium")#selenium or search
         
         end_time = time.time()  # 実行終了時間を記録
         elapsed_time = end_time - start_time  # 実行時間を計算
@@ -129,10 +166,9 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
         # フォーマット済みの文字列を作成
         formatted_time = f"{hours}時間{minutes}分{seconds}秒"
         await append_log_async(f"処理が終了しました。処理にかかった時間:{formatted_time}")  # ログの追加
-
         await append_log_async(f"スプレットシートに追加します。") 
         outputer = Outputer(sheet_manager,results_list)
-        await outputer.batch_execute_for_display(analysis=False)
+        await outputer.batch_execute_for_display(output_mode=output_mode)
 
         return {"count_authors":len(results_list)}
     

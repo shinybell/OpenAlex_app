@@ -165,7 +165,7 @@ class RequestData(BaseModel):
     output_sheet_name: str =""  # 出力シート名
     stop_control:bool=False #実行後に自動でインスタンスを閉じる。
     use_API_key:bool=True
-    need_J_Global:bool=False
+    output_mode:str=""
 
 # エンドポイント: データを受け取って処理
 @app.post("/count_japanese/")
@@ -248,7 +248,7 @@ async def process_feach_japanese(request_data: RequestData):
                 di_calculation=request_data.di_calculation,
                 output_sheet_name=request_data.output_sheet_name,
                 use_API_key = request_data.use_API_key,
-                need_J_Global = request_data.need_J_Global
+                output_mode = request_data.output_mode
                 )
         
         this_instance_id = get_instance_id()
@@ -282,10 +282,10 @@ if __name__ == "__main__":
         "citation_count": 50,
         "publication_year": 2015,
         "title_and_abstract_search": "",
-        "di_calculation": False,
-        "output_sheet_name": "テスト1",
-        "use_API_key":True,
-        "need_J_Global":True
+        "di_calculation": True,
+        "output_sheet_name": "テスト2",
+        "use_API_key":False,
+        "output_mode":"simple"
     }
 
     async def main():
@@ -296,58 +296,3 @@ if __name__ == "__main__":
     
     # イベントループで実行
     asyncio.run(main())
-
-#https://api.openalex.org/works?filter=cited_by_count%3A%3E50%2Cpublication_year%3A%3E2020%2Ctype%3Aarticle%2Ctitle_and_abstract.search%3A%28%22novel+target%22+OR+%22new+target%22+OR+%22therapeutic+target%22%29%2Cauthorships.institutions.country_code%3AJP&page=1&per_page=200
-# # WebSocket エンドポイント
-# @app.websocket("/ws_feach_japanese/ws/")
-# #役割: クライアントとサーバー間でリアルタイムな双方向通信を確立し、進捗メッセージを送信します。
-# async def websocket_endpoint(websocket: WebSocket):
-#     await manager.connect(websocket)
-#     try:
-#         while True:
-#             # クライアントからのメッセージを受信（必要に応じて処理）
-#             data = await websocket.receive_text()
-#             # 必要であれば、受信したメッセージに基づいて応答
-#             await websocket.send_text(f"Received: {data}")
-    
-#     except WebSocketDisconnect:
-#         print("WebSocketDisconnect接続が切れました。")
-#         manager.disconnect(websocket)
-   
-   
-# # エンドポイント: データを受け取って処理
-# @app.post("/ws_feach_japanese/")
-# async def ws_process_feach_japanese(request_data: RequestData):
-#     count_cores = count_logical_cores()
-#     max_works = count_cores*2
-#     print(max_works)
-     
-#     start_time = time.time()  # 実行開始時間を記録
-#     result= await ws_execute(
-#             manager,
-#             topic_ids=request_data.topic_id,
-#             primary=request_data.primary,  # 固定値
-#             threshold=request_data.citation_count,
-#             year_threshold=request_data.publication_year,
-#             title_and_abstract_search=request_data.title_and_abstract_search,
-#             max_works=max_works,
-#             di_calculation=request_data.di_calculation,
-#             output_sheet_name=request_data.output_sheet_name
-#             )
-    
-#     end_time = time.time()  # 実行終了時間を記録
-#     elapsed_time = end_time - start_time  # 実行時間を計算
-    
-#     await manager.broadcast(f"処理にかかった時間:{elapsed_time}")
-#     #ここのWebSocketの接続解除を入れたい。
-#     await manager.broadcast("!*処理が完了しました*!")
-    
-#     if isinstance(result, dict):  # result が辞書の場合
-#         result['execution_time'] = elapsed_time  # 実行時間を追加   
-#         return result
-#     else:
-#         result_dict={
-#             'execution_time':elapsed_time,
-#             'message':result
-#             }
-#         return result_dict
