@@ -12,7 +12,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from services.get_global_data import GetJGlobalData
 from utils.outputer import Outputer
 import threading
-from utils.aggregate_vectors_spacy import aggregate_vectors
 
 class GatheringSampleAuthor:
     def __init__(self,focul_author_id: str,found_date = "",max_works = 80,use_API_key = True):
@@ -232,10 +231,6 @@ class GatheringSampleAuthor:
                 coauthor_data_dict = author.coauthors_coauthor_data(["works_count","total_works_citations","h_index","last_5_year_h_index","coauthor_from_company_count","first_paper_count","corresponding_paper_count","keyword_count","coauthor_count"])
                 coauthor_data_dict = {f"coauthors_total_{key}": value for key, value in coauthor_data_dict.items()}
                 profile_dict.update(coauthor_data_dict)
-                
-                vectors_dict = aggregate_vectors(profile_dict["papers_info"],baseline_date=self.found_date)
-                profile_dict.update(vectors_dict)
-                
                 return profile_dict
             
             except ValueError as e:

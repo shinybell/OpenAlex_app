@@ -9,7 +9,7 @@ import concurrent.futures
 from services.gather_authors_data import GatherAuthorData
 from api.list_openAlex_fetcher import OpenAlexPagenationDataFetcher
 from utils.common_method import extract_id_from_url
-from utils.aggregate_vectors_spacy import aggregate_vectors
+
 
 class GatheringRandomSampleAuthor:
     def __init__(self, concept_id: str, sample_size: int = 100,use_API_key: bool = True):
@@ -77,7 +77,6 @@ class GatheringRandomSampleAuthor:
         ※以下の追加処理を実施しています。
           - di_calculation() を実行してDisruption Indexを計算
           - coauthors_coauthor_data() を実行して共著者情報を取得し、キーにプレフィックスを付与して統合
-          - aggregate_vectors() を実行して、論文情報(papers_info)からベクトル情報を集約
         常に profile.to_dict() を用いて辞書化しています。
         ※found_dateは使用しません。
         """
@@ -101,11 +100,6 @@ class GatheringRandomSampleAuthor:
             coauthor_data = author_data.coauthors_coauthor_data(coauthor_keys)
             coauthor_data = {f"coauthors_total_{key}": value for key, value in coauthor_data.items()}
             profile_dict.update(coauthor_data)
-
-            # 論文情報から集約したベクトル情報を追加（papers_infoが存在する場合）
-            if "papers_info" in profile_dict:
-                vectors_dict = aggregate_vectors(profile_dict["papers_info"])
-                profile_dict.update(vectors_dict)
 
             return profile_dict
         except Exception as e:
