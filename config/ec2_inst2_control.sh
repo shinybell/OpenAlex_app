@@ -3,7 +3,7 @@
 #chmod +x ec2_core8_instance_control.sh
 
 # インスタンスID（AWS EC2のインスタンスIDを指定します）
-INSTANCE_ID="i-0411b476934cc16a5"
+INSTANCE_ID=""
 
 # ユーザーからの引数（start、stop、list）を受け取る
 ACTION=$1  # このスクリプトの実行時に渡された最初の引数を取得します。

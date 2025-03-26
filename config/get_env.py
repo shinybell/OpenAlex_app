@@ -44,14 +44,10 @@ def stop_this_instance(instance_id):
     # 現在のファイルのパスを取得してディレクトリを取得
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
-    if instance_id=="i-00263e90d849af505":
-        CORE8_SCRIPT_PATH = os.path.join(current_dir, "ec2_core8_inst2_control.sh")
-    elif instance_id=="i-06a99ec8dab83f67a":
-        CORE8_SCRIPT_PATH = os.path.join(current_dir, "ec2_core8_inst3_control.sh")
-    elif instance_id=="i-0411b476934cc16a5":
-        CORE8_SCRIPT_PATH = os.path.join(current_dir, "ec2_core8_inst1_control.sh")   
-    elif instance_id=="i-00c9116fa53632f53":
-        CORE8_SCRIPT_PATH = os.path.join(current_dir, "ec2_test_instance_control.sh") 
+    if instance_id=="i-0e8a52d187fcd644e":
+        CORE8_SCRIPT_PATH = os.path.join(current_dir, "ec2_inst1_control.sh")
+    elif instance_id=="":
+        CORE8_SCRIPT_PATH = os.path.join(current_dir, "ec2_inst2_control.sh")
     elif instance_id=="local":
         print("ローカル環境で実行しているのでインスタンスを止める処理はしません。")
         return
