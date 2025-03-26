@@ -11,8 +11,7 @@ class SpreadsheetManager:
             # 認証情報ファイルのパス
             base_dir = os.path.dirname(os.path.dirname(__file__))  # スクリプトのディレクトリを取得
             base_dir = f"{base_dir}/config"
-            #GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-            GOOGLE_APPLICATION_CREDENTIALS ="uplifted-env-435001-p3-36f18da76d83.json"
+            GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
             self.service_account_file = os.path.join(base_dir, GOOGLE_APPLICATION_CREDENTIALS)
             # 必要なスコープ
             self.scopes = [
