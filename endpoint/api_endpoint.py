@@ -155,7 +155,6 @@ manager = ConnectionManager()
 
 # リクエストデータのモデル
 class RequestData(BaseModel):
-    author_info_source: str ="Works" # 著者情報の取得先
     topic_id: List[str] =[] # トピックID（リスト）
     primary: bool =True
     citation_count: int =-1 # 引用数（整数）
@@ -209,16 +208,15 @@ async def process_feach_japanese(request_data: RequestData):
 if __name__ == "__main__":
     # 非同期関数を呼び出すためにイベントループを使用
     request_data = {
-        #"author_info_source": "work",
-        "topic_id": ["T12385", "T13015", "T10225"],
+        "topic_id": [],
         "primary": True,
         "citation_count": 50,
         "publication_year": 2015,
-        "title_and_abstract_search": "",
-        "di_calculation": True,
+        "title_and_abstract_search": "AI,machine",
+        "di_calculation": False,
         "output_sheet_name": "テスト2",
-        "use_API_key":False,
-        "output_mode":"simple"
+        "use_API_key":True,
+        "output_mode":"detail"
     }
 
     async def main():

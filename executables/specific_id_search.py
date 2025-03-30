@@ -16,7 +16,7 @@ import time
 secret = SecretManager()
 
 #条件を指定して研究者リスト作成する
-async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_and_abstract_search='',di_calculation=False,output_sheet_name="API動作確認",use_API_key = False,output_mode=""):
+async def specific_id_execute(data,di_calculation=False,output_sheet_name="API動作確認",use_API_key = False,output_mode=""):
     
     start_time = time.time()  # 実行開始時間を記録
     try:
@@ -32,30 +32,17 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
         else:
             max_works = count_cores*10
         
-        creater = CreateAuthorIdList(topic_ids=topic_ids,primary=primary,threshold=threshold,year_threshold=year_threshold,title_and_abstract_search=title_and_abstract_search,max_works=max_works,use_API_key=use_API_key)
-        await append_log_async(f"論文の検索")  # ログの追加
-        creater.run_get_works()
-        creater.extract_authors()
-        await append_log_async(f"論文数:{len(creater.all_results)},研究者数:{len(creater.authors_id_list)}")  # ログの追加
-        if len(creater.authors_id_list)<=0:
-            await append_log_async("検索結果がありませんでした。")
-            return {"count_authors":0}
-        
-        global_hindex_ranking_list = await creater.create_hindex_ranking()
-        print(f"global_hindex_ranking_listの数:{len(global_hindex_ranking_list)}")
-        creater.extract_authors(only_japanese=True)
-        await append_log_async(f"日本人著者数:{len(creater.authors_id_list)}")  #ログの追加
-        
+ 
         person_num = 8 if use_API_key else 4
         max_workers=max_works//person_num
         
-        def process_author(author_id): 
+        def process_author(item): 
             """
             個々のauthor_idに対して処理を実行する関数
             """
             try:
-                print(author_id, "の調査")
-                author = GatherAuthorData(author_id=author_id,max_workers=max_workers,use_API_key=use_API_key)
+                print(item['id'], "の調査")
+                author = GatherAuthorData(author_id=item['id'], max_workers=max_workers, use_API_key=use_API_key, found_date=item['date'])
                 author.run_fetch_works()
                 
                 if not author.article_dict_list:
@@ -65,20 +52,11 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                     author.di_calculation()
                 
                 profile = author.gathering_author_data()
-                profile.h_index_ranking = next(
-                    (
-                        entry["h_index_ranking"]  # 計算せず、値をそのまま使用する
-                        for entry in global_hindex_ranking_list
-                        if extract_id_from_url(entry["id"]) == extract_id_from_url(author_id)
-                    ),
-                    -100  # 条件に合致するものがなかった場合は -100 を返す
-                )
                 
-                profile.all_author_count = len(global_hindex_ranking_list)
+    
                 profile_dict = profile.to_dict()
                 works_data_dict = author.get_top_three_article()
-                top_searched_article = creater.get_top_article(author_id)
-                profile_dict.update(top_searched_article)
+        
                 profile_dict.update(works_data_dict)
                 raw_keys = [
                     "total_works_citations",
@@ -127,15 +105,15 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                 return profile_dict
             
             except Exception as e:
-                raise Exception(f"process_author内でエラー発生 (author_id: {author_id}): {e}") # エラーを再スローして上位で処理
+                raise Exception(f"process_author内でエラー発生 (author_id: {item['id']}): {e}") # エラーを再スローして上位で処理
             
         # 並列処理
         results_list = []
         length = 5
         with ThreadPoolExecutor(max_workers=person_num) as executor:  # max_workersは並列スレッド数
-            futures = {executor.submit(process_author, author_id): author_id for author_id in creater.authors_id_list}
+            futures = {executor.submit(process_author, item): item for item in data}
             for future in as_completed(futures):
-                author_id = futures[future]
+                item = futures[future]
                 try:
                     result = future.result()  # 処理結果を取得
                     results_list.append(result)
@@ -149,7 +127,7 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
                 
                 except Exception as e: 
                     # メインスレッドでのエラーハンドリング
-                    await append_log_async(f"{author_id} の処理中にエラーが発生しました: {e}") #ログの追加
+                    await append_log_async(f"{item['id']} の処理中にエラーが発生しました: {e}") #ログの追加
                     # イベントループに制御を戻す
                     await asyncio.sleep(0)
 
@@ -182,3 +160,50 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
     except Exception as e:
         await append_log_async(f"予期しないエラーにより処理が中断しました。:{e}") 
         return e
+
+
+if __name__ == "__main__":
+    
+    # 各辞書のキーは "date" と "id" です
+    # 各辞書のキーは "date" と "id" です。dateはすべて空文字に設定しています。
+    data = [
+        {"date": "", "id": "A5088470421"},
+        {"date": "", "id": "A5046929921"},
+        {"date": "", "id": "A5069381472"},
+        {"date": "", "id": "A5078708083"},
+        {"date": "", "id": "A5103729537"},
+        {"date": "", "id": "A5103758018"},
+        {"date": "", "id": "A5008853188"},
+        {"date": "", "id": "A5001703580"},
+        {"date": "", "id": "A5101864668"},
+        {"date": "", "id": "A5025502033"},
+        {"date": "", "id": "A5030416341"},
+        {"date": "", "id": "A5047575077"},
+        {"date": "", "id": "A5027781657"},
+        {"date": "", "id": "A5009927733"},
+        {"date": "", "id": "A5022077244"},
+        {"date": "", "id": "A5056590036"},
+        {"date": "", "id": "A5054416068"},
+        {"date": "", "id": "A5048103459"},
+        {"date": "", "id": "A5023389902"},
+        {"date": "", "id": "A5020461673"},
+        {"date": "", "id": "A5083163427"},
+        {"date": "", "id": "A5107483313"},
+        {"date": "", "id": "A5086543319"},
+        {"date": "", "id": "A5101653342"},
+        {"date": "", "id": "A5019961334"},
+        {"date": "", "id": "A5037383580"},
+        {"date": "", "id": "A5036467430"},
+        {"date": "", "id": "A5078242198"},
+        {"date": "", "id": "A5090517305"},
+        {"date": "", "id": "A5007645582"},
+        {"date": "", "id": "A5082304775"},
+        {"date": "", "id": "A5101904235"},
+        {"date": "", "id": "A5056964526"},
+        {"date": "", "id": "A5039088371"},
+        {"date": "", "id": "A5108690521"},
+        {"date": "", "id": "A5101494445"}
+    ]
+
+    import asyncio
+    asyncio.run(specific_id_execute(data, di_calculation=True, output_sheet_name="API動作確認", use_API_key=True, output_mode=""))

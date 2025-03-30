@@ -186,13 +186,14 @@ class Outputer:
                 predictive_model = item.pop("predict_model",-200)
                 
                 # 新しいキーとその値
+                all_author_count = item.get("all_author_count", 1)
                 new_data = {
                     #"Google検索": search_query, #"検索リンク"は、不要そうなのでコメントアウト中。必要だったら追加。
                     "研究の質（h-index）": item.get("h_index", ""),
-                    "h-index世界ランク": round(item.get("h_index_ranking", 0) / item.get("all_author_count", 1), 2),
+                    "h-index世界ランク": 0 if all_author_count == 0 else round(item.get("h_index_ranking", 0) / all_author_count, 2),
                     "若さ（逆数）": youth_index,
                     "革新性（DI0.8以上のworks数）": item.get("disruption_index_above_08", ""),
-                    "予測モデル":predictive_model,
+                    "予測モデル": predictive_model,
                 }
                 # 既存のデータを新しいデータの後に追加
                 combined_data = {**new_data, **item}

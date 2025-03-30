@@ -65,17 +65,18 @@ class CreateAuthorIdList:
         #topicがない場合
         else:
             try:
-                filter_value = f"cited_by_count:>{self.threshold},publication_year:>{self.year_threshold},type:{self.work_type},title_and_abstract.search:{self.title_and_abstract_search}"#,authorships.institutions.country_code:JP"
+                print(self.title_and_abstract_search)
+                filter_value = f'cited_by_count:>{self.threshold},publication_year:>{self.year_threshold},type:{self.work_type},title_and_abstract.search:{self.title_and_abstract_search},authorships.institutions.country_code:JP'
                 params = {
                     "filter":filter_value,
                     "page": self.page, 
                     "per_page": self.per_page
                 }
-                fetcher = OpenAlexPagenationDataFetcher(self.endpoint_url,params,self.title_and_abstract_search,max_works = self.max_works,only_japanese=False,use_API_key = self.use_API_key)
+                fetcher = OpenAlexPagenationDataFetcher(self.endpoint_url,params,f"任意のキーワード検索:{self.title_and_abstract_search}",max_works = self.max_works,only_japanese=False,use_API_key = self.use_API_key)
                 self.all_results.extend(fetcher.all_results) 
             except Exception as e:
                 raise Exception(f"Failed to fetch works without topics: {e}")
-            
+        
         _,self.article_dict_list=OpenAlexResultParser.works_dict_list_from_works_results(self.all_results)
         self.article_dict_list = sort_dict_list_by_key(self.article_dict_list,"Cited By Count")
 

@@ -16,7 +16,7 @@ class OpenAlexPagenationDataFetcher:
     
     def __init__(self,endpoint_url, params,id,max_works,only_japanese=False,use_API_key=False,max_count_10000=False):
         load_dotenv()  # 追加
-        self.output_log =False
+        self.output_log =True
         self.max_count_10000 = max_count_10000
         self.max_workers =  max_works
         self.endpoint_url = endpoint_url
@@ -236,7 +236,7 @@ if __name__ == "__main__":
     endpoint_url= "https://api.openalex.org/works"
     params={
         "sample":10000,
-        "filter": "publication_year:>2010,language:en,primary_topic.domain.id:4,type:article",
+        "filter": 'publication_year:>2010,language:en,primary_topic.domain.id:4,type:article,title_and_abstract.search:("novel target"OR"new target"OR"therapeutic target")',
         "per_page":200,
         "page":1,
         "seed":321
