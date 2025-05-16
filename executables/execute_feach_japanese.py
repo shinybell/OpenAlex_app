@@ -302,12 +302,12 @@ async def execute(topic_ids,primary=True,threshold=15,year_threshold=2015,title_
         # outputer = Outputer(sheet_manager,results_list)
         # await outputer.batch_execute_for_display(output_mode=output_mode)
         # ローカルのexcelに出力
-        print(f"ローカルのExcelに出力します。")
+        # print(f"ローカルのExcelに出力します。")
         # ここにローカルのExcelに出力するコードを追加
         outputer = LocalOutputer(results_list)
         outputer.file_name = "sample_output"
         await outputer.batch_execute_for_display(output_mode='sample')
-        print(f"ローカルのExcelに出力しました。")
+        # print(f"ローカルのExcelに出力しました。")
 
         return {"count_authors":len(results_list)}
 

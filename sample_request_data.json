@@ -1,0 +1,12 @@
+{
+    "topic_id": [],
+    "primary": true,
+    "citation_count": 50,
+    "publication_year": 2022,
+    "title_and_abstract_search": "AI,machine learning",
+    "di_calculation": false,
+    "output_sheet_name": "サンプル出力",
+    "stop_control": false,
+    "use_API_key": true,
+    "output_mode": "detail"
+}

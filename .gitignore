@@ -17,6 +17,8 @@ JSONにpapersを追記.py
 sample_output.csv
 
 **/*.json
+!sample_request_data.json
+
 #git add .
 #git commit -m "readmeの追記"
 #git push origin main
