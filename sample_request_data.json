@@ -7,6 +7,6 @@
     "di_calculation": false,
     "output_sheet_name": "サンプル出力",
     "stop_control": false,
-    "use_API_key": true,
+    "use_API_key": false,
     "output_mode": "detail"
 }

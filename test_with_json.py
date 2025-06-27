@@ -50,7 +50,7 @@ if __name__ == "__main__":
         with open(json_file_path, 'r', encoding='utf-8') as f:
             request_data = json.load(f)
         # jsonファイルの内容をRequestDataに変換
-        request_data = RequestData(**request_data)
+        # request_data = RequestData(**request_data)
     # 引数が指定されていない場合はデフォルトのリクエストデータを使用
     else:
         # デフォルトのリクエストデータ
